@@ -1,0 +1,6 @@
+{
+  "name": "Nexus AI – FIFA Stadium Intelligence Platform",
+  "description": "Premium FIFA World Cup 2026 stadium management and fan engagement system, featuring live heatmaps, task stacks, interactive seat maps, and intelligent command orchestration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
