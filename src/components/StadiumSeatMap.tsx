@@ -99,12 +99,17 @@ export default function StadiumSeatMap({
             }
 
             return (
-              <g 
+              <g
                 key={sec.id}
+                role="button"
+                tabIndex={onSeatSelect ? 0 : -1}
+                aria-label={`Stadium sector ${sec.id}`}
+                aria-pressed={isHighlighted}
                 className="cursor-pointer transition-all duration-300"
                 onMouseEnter={() => setHoveredSection(sec.id)}
                 onMouseLeave={() => setHoveredSection(null)}
                 onClick={() => onSeatSelect?.(sec.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSeatSelect?.(sec.id); } }}
               >
                 <path 
                   d={sec.d} 

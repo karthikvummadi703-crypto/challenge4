@@ -411,9 +411,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Email Address</label>
-              <input 
-                type="email" 
+              <label htmlFor="org-email" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Email Address</label>
+              <input
+                id="org-email"
+                type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -423,9 +424,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
             </div>
 
             <div>
-              <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Security Key</label>
-              <input 
-                type="password" 
+              <label htmlFor="org-password" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Security Key</label>
+              <input
+                id="org-password"
+                type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -435,7 +437,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
             </div>
 
             {loginError && (
-              <p className="text-xs text-red-500 font-semibold bg-red-950/30 border border-red-500/20 rounded-xl p-3 text-center">{loginError}</p>
+              <p role="alert" className="text-xs text-red-500 font-semibold bg-red-950/30 border border-red-500/20 rounded-xl p-3 text-center">{loginError}</p>
             )}
 
             <button 
@@ -603,7 +605,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
 
               {/* Status Indicator */}
               <div className="flex items-center space-x-3 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-xs">
-                <span className={`h-2.5 w-2.5 rounded-full ${isPublished ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${isPublished ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                 <span className="font-semibold text-slate-300">Event Status: <strong className="text-white uppercase">{isPublished ? 'LIVE ON AIR' : 'PENDING SETUP'}</strong></span>
               </div>
             </div>
@@ -681,7 +683,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                       stats.recentAlerts.map((alert: any) => (
                         <div key={alert.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <span className={`h-2 w-2 rounded-full ${alert.priority === 'critical' ? 'bg-red-500 animate-ping' : alert.priority === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${alert.priority === 'critical' ? 'bg-red-500 animate-ping' : alert.priority === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                             <p className="text-xs text-slate-200 font-semibold">{alert.text}</p>
                           </div>
                           <span className="text-[10px] font-mono text-slate-500">{alert.time}</span>
@@ -761,11 +763,12 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                     placeholder="Ask command assistant anything..."
                     className="flex-1 bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all placeholder:text-slate-600"
                   />
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
+                    aria-label="Send command"
                     className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black transition-all cursor-pointer shadow-md"
                   >
-                    <Send className="h-3.5 w-3.5" />
+                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </form>
 
@@ -798,9 +801,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Stadium Name</label>
-                    <input 
-                      type="text" 
+                    <label htmlFor="match-stadium" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Stadium Name</label>
+                    <input
+                      id="match-stadium"
+                      type="text"
                       required
                       value={stadiumName}
                       onChange={(e) => setStadiumName(e.target.value)}
@@ -809,9 +813,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   </div>
 
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Match Name (Group Stage / Finals)</label>
-                    <input 
-                      type="text" 
+                    <label htmlFor="match-name" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Match Name (Group Stage / Finals)</label>
+                    <input
+                      id="match-name"
+                      type="text"
                       required
                       placeholder="e.g. Portugal vs Argentina"
                       value={matchName}
@@ -821,9 +826,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Match Date</label>
-                    <input 
-                      type="text" 
+                    <label htmlFor="match-date" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Match Date</label>
+                    <input
+                      id="match-date"
+                      type="text"
                       required
                       placeholder="DD/MM/YYYY"
                       value={matchDate}
@@ -833,9 +839,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Match Time</label>
-                    <input 
-                      type="text" 
+                    <label htmlFor="match-time" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Match Time</label>
+                    <input
+                      id="match-time"
+                      type="text"
                       required
                       placeholder="e.g. 07:30 PM"
                       value={matchTime}
@@ -845,9 +852,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Ticket Price (USD)</label>
-                    <input 
-                      type="number" 
+                    <label htmlFor="match-price" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Ticket Price (USD)</label>
+                    <input
+                      id="match-price"
+                      type="number"
                       required
                       value={ticketPrice}
                       onChange={(e) => setTicketPrice(e.target.value)}
@@ -857,7 +865,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                 </div>
 
                 {matchSaveSuccess && (
-                  <p className="text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/20 p-3 rounded-xl text-center">Match logistics updated & synced with Nexus node.</p>
+                  <p role="status" aria-live="polite" className="text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/20 p-3 rounded-xl text-center">Match logistics updated & synced with Nexus node.</p>
                 )}
 
                 <button 
@@ -930,9 +938,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                 
                 <form onSubmit={handleAddVolunteer} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Full Name</label>
-                    <input 
-                      type="text" 
+                    <label htmlFor="vol-new-name" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Full Name</label>
+                    <input
+                      id="vol-new-name"
+                      type="text"
                       required
                       placeholder="e.g. Karthik"
                       value={newVolunteerName}
@@ -942,9 +951,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
-                    <input 
-                      type="email" 
+                    <label htmlFor="vol-new-email" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
+                    <input
+                      id="vol-new-email"
+                      type="email"
                       required
                       placeholder="e.g. karthik@nexusai.com"
                       value={newVolunteerEmail}
@@ -954,8 +964,9 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Assigned Gate</label>
+                    <label htmlFor="vol-new-gate" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Assigned Gate</label>
                     <select
+                      id="vol-new-gate"
                       value={newVolunteerGate}
                       onChange={(e) => setNewVolunteerGate(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 outline-none transition-all"
@@ -968,9 +979,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
-                    <input 
-                      type="password" 
+                    <label htmlFor="vol-new-password" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
+                    <input
+                      id="vol-new-password"
+                      type="password"
                       required
                       placeholder="e.g. password123"
                       value={newVolunteerPassword}
@@ -1035,11 +1047,12 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                             </span>
                           </td>
                           <td className="py-3 px-2 text-right">
-                            <button 
+                            <button
                               onClick={() => handleRemoveVolunteer(vol.id)}
+                              aria-label={`Remove volunteer ${vol.name}`}
                               className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-950/20 rounded-md transition-all cursor-pointer"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </button>
                           </td>
                         </tr>

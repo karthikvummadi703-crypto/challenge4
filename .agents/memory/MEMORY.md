@@ -1,1 +1,2 @@
-- [Volunteer Login Root Cause Fix](volunteer-login-fix.md) — secondary Firebase app in adminCreateVolunteer must use same project config as primary app; wrong hardcoded project was the bug.
+- [Volunteer Login Root Cause Fix](volunteer-login-fix.md) — three root causes: PERMISSION_DENIED propagation, wrong Firebase project in adminCreateVolunteer, missing Firestore rules for 6 collections.
+- [Test Suite](test-suite.md) — 24 vitest tests in tests/server.test.ts; run with npm test. All pass. Vitest config in vitest.config.ts.

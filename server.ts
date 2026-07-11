@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import {
   Match, Volunteer, Task, FoodOrder, MedicalEmergency, IssueReport
 } from './src/types';
@@ -18,8 +19,34 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
   next();
 });
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
+/** Strict limiter for auth endpoints — 10 attempts per 15 min per IP */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again later.' },
+});
+
+/** General API limiter — 120 requests per minute per IP */
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please slow down.' },
+});
+
+app.use('/api/fan/register', authLimiter);
+app.use('/api/volunteer/login', authLimiter);
+app.use('/api/', apiLimiter);
 
 app.use(express.json({ limit: '64kb' }));
 

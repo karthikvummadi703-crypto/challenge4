@@ -97,6 +97,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
               </div>
               <button 
                 onClick={onClose}
+                aria-label="Close settings"
                 className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
               >
                 <X className="h-4 w-4" />
@@ -115,11 +116,12 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
               {/* Webhook URLs Fields */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">
+                  <label htmlFor="n8n-dispatch-url" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">
                     n8n Dispatch Orchestration Webhook
                   </label>
-                  <input 
-                    type="url" 
+                  <input
+                    id="n8n-dispatch-url"
+                    type="url"
                     placeholder="https://primary-n8n.yourdomain.com/webhook/..."
                     value={n8nWebhookUrl}
                     onChange={(e) => setN8nWebhookUrl(e.target.value)}
@@ -131,11 +133,12 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">
+                  <label htmlFor="n8n-ai-url" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">
                     n8n AI Command Assistant Webhook
                   </label>
-                  <input 
-                    type="url" 
+                  <input
+                    id="n8n-ai-url"
+                    type="url"
                     placeholder="https://ai-n8n.yourdomain.com/webhook-ai/..."
                     value={n8nAiAssistantUrl}
                     onChange={(e) => setN8nAiAssistantUrl(e.target.value)}
@@ -156,6 +159,8 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
                 <button
                   type="button"
                   onClick={() => setUseMockAI(!useMockAI)}
+                  aria-pressed={useMockAI}
+                  aria-label={useMockAI ? 'Disable rule-based fallback' : 'Enable rule-based fallback'}
                   className="text-emerald-400 focus:outline-none transition-transform active:scale-95"
                 >
                   {useMockAI ? (
@@ -167,18 +172,19 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
               </div>
 
               {/* Message displays */}
-              {successMessage && (
-                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-400 font-medium">
-                  {successMessage}
-                </div>
-              )}
-
-              {errorMessage && (
-                <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-xs text-red-400 font-medium flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{errorMessage}</span>
-                </div>
-              )}
+              <div aria-live="polite" aria-atomic="true">
+                {successMessage && (
+                  <div role="status" className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-400 font-medium">
+                    {successMessage}
+                  </div>
+                )}
+                {errorMessage && (
+                  <div role="alert" className="p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-xs text-red-400 font-medium flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+              </div>
 
               {/* Action Buttons */}
               <div className="flex items-center space-x-3 pt-2 border-t border-slate-800/60">

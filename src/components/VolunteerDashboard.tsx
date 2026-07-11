@@ -273,8 +273,9 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
-                <input 
+                <label htmlFor="vol-email" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
+                <input
+                  id="vol-email"
                   type="email"
                   required
                   value={email}
@@ -285,8 +286,9 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
               </div>
 
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
-                <input 
+                <label htmlFor="vol-password" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
+                <input
+                  id="vol-password"
                   type="password"
                   required
                   value={password}
@@ -298,7 +300,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
             </div>
 
             {loginError && (
-              <p className="text-xs text-red-500 font-semibold bg-red-950/30 border border-red-500/20 rounded-xl p-3 text-center">{loginError}</p>
+              <p role="alert" className="text-xs text-red-500 font-semibold bg-red-950/30 border border-red-500/20 rounded-xl p-3 text-center">{loginError}</p>
             )}
 
             <button 
@@ -572,7 +574,9 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
 
               {/* Input */}
               <form onSubmit={handleSendAiText} className="p-2 bg-slate-950 border-t border-slate-850 flex items-center space-x-2">
-                <input 
+                <label htmlFor="vol-ai-input" className="sr-only">Ask route guide</label>
+                <input
+                  id="vol-ai-input"
                   type="text"
                   required
                   placeholder="Ask route guide..."
@@ -580,8 +584,8 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
                   onChange={(e) => setAiText(e.target.value)}
                   className="flex-1 bg-slate-900 border border-slate-800 text-xs px-2.5 py-1.5 rounded-lg text-white focus:outline-none"
                 />
-                <button type="submit" className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black cursor-pointer">
-                  <Send className="h-3 w-3" />
+                <button type="submit" aria-label="Send message" className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black cursor-pointer">
+                  <Send className="h-3 w-3" aria-hidden="true" />
                 </button>
               </form>
             </motion.div>

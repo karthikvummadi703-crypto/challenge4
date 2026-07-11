@@ -374,8 +374,9 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
             {isRegistering && (
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Full Name</label>
-                <input 
+                <label htmlFor="fan-name" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Full Name</label>
+                <input
+                  id="fan-name"
                   type="text" required
                   value={name} onChange={(e) => setName(e.target.value)}
                   placeholder="Cristiano Ronaldo"
@@ -385,8 +386,9 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
             )}
 
             <div>
-              <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
-              <input 
+              <label htmlFor="fan-email" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
+              <input
+                id="fan-email"
                 type="email" required
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="fan@worldcup.com"
@@ -395,8 +397,9 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
             </div>
 
             <div>
-              <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
-              <input 
+              <label htmlFor="fan-password" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
+              <input
+                id="fan-password"
                 type="password" required
                 value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -406,10 +409,11 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
             {isRegistering && (
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Your Seat Location</label>
+                <label htmlFor="fan-seat" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Your Seat Location</label>
                 <div className="relative flex items-center">
-                  <input 
-                    type="text" 
+                  <input
+                    id="fan-seat"
+                    type="text"
                     readOnly
                     required
                     value={seatNumber}
@@ -420,10 +424,10 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
                     type="button"
                     disabled={isGeneratingSeat}
                     onClick={handleRegenerateSeat}
+                    aria-label="Generate new seat number"
                     className="absolute right-2 p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 hover:text-emerald-300 disabled:opacity-50 cursor-pointer flex items-center justify-center transition-all"
-                    title="Generate unique seat"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isGeneratingSeat ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-3.5 w-3.5 ${isGeneratingSeat ? 'animate-spin' : ''}`} aria-hidden="true" />
                   </button>
                 </div>
                 <span className="text-[9px] text-slate-500 mt-1 block">Your unique stadium seat number is automatically validated as available.</span>
@@ -700,7 +704,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
                   </div>
 
                   {orderSuccess && (
-                    <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl text-center font-medium">
+                    <div role="status" aria-live="polite" className="p-3 bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl text-center font-medium">
                       Order Placed! Delivery is en-route.
                     </div>
                   )}
@@ -740,8 +744,9 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
               </div>
 
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Verify Your Coordinate Seat</label>
-                <input 
+                <label htmlFor="emergency-seat" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Verify Your Coordinate Seat</label>
+                <input
+                  id="emergency-seat"
                   type="text"
                   required
                   value={emergencySeat}
@@ -751,7 +756,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
               </div>
 
               {emergencySuccess && (
-                <div className="p-3 bg-red-950/20 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium">
+                <div role="alert" aria-live="assertive" className="p-3 bg-red-950/20 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium">
                   EMERGENCY RESOLUTION ACTIVE. Paramedic team is dispatching. Stay seated.
                 </div>
               )}
@@ -800,8 +805,9 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
               </div>
 
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Describe the Incident / Problem</label>
-                <textarea 
+                <label htmlFor="issue-description" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Describe the Incident / Problem</label>
+                <textarea
+                  id="issue-description"
                   required
                   rows={4}
                   value={issueDescription}
@@ -812,7 +818,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
               </div>
 
               {issueSuccess && (
-                <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl text-center font-medium">
+                <div role="status" aria-live="polite" className="p-3 bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl text-center font-medium">
                   Incident Report logged! Dispatching a volunteer.
                 </div>
               )}
@@ -883,15 +889,17 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
         {/* Input */}
         <form onSubmit={handleAskAI} className="p-3 bg-slate-950 border-t border-slate-850 flex items-center space-x-2">
-          <input 
+          <label htmlFor="fan-ai-input" className="sr-only">Ask AI assistant</label>
+          <input
+            id="fan-ai-input"
             type="text" required
             placeholder="Ask AI assistant..."
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             className="flex-1 bg-slate-900 border border-slate-800 text-xs px-3 py-2 rounded-xl text-white focus:outline-none transition-all focus:border-emerald-500 placeholder:text-slate-650"
           />
-          <button type="submit" className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black transition-all cursor-pointer">
-            <Send className="h-3.5 w-3.5" />
+          <button type="submit" aria-label="Send message" className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black transition-all cursor-pointer">
+            <Send className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </form>
 
