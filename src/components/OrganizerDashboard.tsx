@@ -226,17 +226,22 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       try {
         await loginUser(email, password, 'admin');
       } catch (loginErr: any) {
-        // Self-heal: If default credentials used and user doesn't exist, create it lazily!
-        if (email === 'admin@nexusai.com' && (loginErr.code === 'auth/user-not-found' || loginErr.message?.includes('not-found') || loginErr.message?.includes('credential') || loginErr.message?.includes('user-not-found'))) {
+        const isAuthNotFound = loginErr.code === 'auth/user-not-found'
+          || loginErr.message?.includes('not-found')
+          || loginErr.message?.includes('user-not-found');
+        const isInvalidCredential = loginErr.code === 'auth/invalid-credential'
+          || loginErr.message?.includes('credential');
+        const isNoRoleDoc = loginErr.message?.includes('not configured in any role')
+          || loginErr.message?.includes('Access Denied');
+
+        // Case 1: admin@nexusai.com doesn't exist in Firebase Auth yet — create it lazily
+        if (email === 'admin@nexusai.com' && (isAuthNotFound || isInvalidCredential)) {
           try {
             const { createUserWithEmailAndPassword } = await import('firebase/auth');
             const { auth } = await import('../firebase');
             const { createAdminProfile } = await import('../services/userService');
-            
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await createAdminProfile(userCredential.user.uid, email);
-            
-            // Login now!
             await loginUser(email, password, 'admin');
             setIsLoggingIn(false);
             return;
@@ -245,6 +250,27 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
             throw loginErr;
           }
         }
+
+        // Case 2: Firebase Auth succeeded but no Firestore admin document exists for this user.
+        // This happens when an admin account was created directly in the Firebase console
+        // (Firebase Auth only) without a corresponding /admins/{uid} Firestore document.
+        // Fix: sign in again to get the UID, create the profile, then login normally.
+        if (isNoRoleDoc) {
+          try {
+            const { signInWithEmailAndPassword } = await import('firebase/auth');
+            const { auth } = await import('../firebase');
+            const { createAdminProfile } = await import('../services/userService');
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            await createAdminProfile(userCredential.user.uid, email);
+            await loginUser(email, password, 'admin');
+            setIsLoggingIn(false);
+            return;
+          } catch (profileErr) {
+            console.error("Failed to create admin profile:", profileErr);
+            throw loginErr;
+          }
+        }
+
         throw loginErr;
       }
     } catch (err: any) {
