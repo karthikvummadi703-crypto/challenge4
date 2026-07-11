@@ -18,6 +18,17 @@ export interface UserProfile {
   lastLogin?: any;
   profileCompleted?: boolean;
   seatNumber?: string;
+  phone?: string;
+  country?: string;
+  preferredLanguage?: string;
+  favoriteTeam?: string;
+}
+
+export interface FanRegistrationDetails {
+  phone?: string;
+  country?: string;
+  preferredLanguage?: string;
+  favoriteTeam?: string;
 }
 
 export type UserRole = 'admin' | 'volunteer' | 'fan';
@@ -27,7 +38,8 @@ export const createFanProfile = async (
   uid: string,
   fullName: string,
   email: string,
-  seatNumber: string = 'A12-24'
+  seatNumber: string = 'A12-24',
+  details: FanRegistrationDetails = {}
 ): Promise<void> => {
   let assignedGate = 'Gate A';
   if (seatNumber.startsWith('B')) assignedGate = 'Gate B';
@@ -41,6 +53,10 @@ export const createFanProfile = async (
     role: 'fan',
     seatNumber,
     assignedGate,
+    phone: (details.phone || '').trim(),
+    country: (details.country || '').trim(),
+    preferredLanguage: details.preferredLanguage || 'English',
+    favoriteTeam: (details.favoriteTeam || '').trim(),
     createdAt: serverTimestamp(),
     lastLogin: serverTimestamp(),
     profileCompleted: true,

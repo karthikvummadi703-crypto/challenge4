@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { getUserRole, getUserProfile, createFanProfile, updateLastLogin, UserProfile } from '../services/userService';
+import { getUserRole, getUserProfile, createFanProfile, updateLastLogin, UserProfile, FanRegistrationDetails } from '../services/userService';
 import { getFriendlyErrorMessage, logout } from '../services/authService';
 
 interface AuthContextType {
@@ -11,7 +11,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   setError: (err: string | null) => void;
-  signUpFan: (fullName: string, email: string, password: string, seatNumber?: string) => Promise<void>;
+  signUpFan: (fullName: string, email: string, password: string, seatNumber?: string, details?: FanRegistrationDetails) => Promise<void>;
   loginUser: (email: string, password: string, expectedRole?: 'admin' | 'volunteer' | 'fan') => Promise<void>;
   logoutUser: () => Promise<void>;
 }
@@ -62,13 +62,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, []);
 
-  const signUpFan = async (fullName: string, email: string, password: string, seatNumber?: string) => {
+  const signUpFan = async (fullName: string, email: string, password: string, seatNumber?: string, details?: FanRegistrationDetails) => {
     setLoading(true);
     setError(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
-      await createFanProfile(firebaseUser.uid, fullName, email, seatNumber);
+      await createFanProfile(firebaseUser.uid, fullName, email, seatNumber, details);
       setUser(firebaseUser);
       setRole('fan');
       setProfile({
@@ -77,6 +77,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role: 'fan',
         fullName,
         seatNumber,
+        phone: details?.phone,
+        country: details?.country,
+        preferredLanguage: details?.preferredLanguage,
+        favoriteTeam: details?.favoriteTeam,
         profileCompleted: true
       });
     } catch (err: any) {

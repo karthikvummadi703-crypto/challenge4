@@ -25,6 +25,10 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [seatNumber, setSeatNumber] = useState(''); // starts empty to force generator
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('English');
+  const [favoriteTeam, setFavoriteTeam] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingSeat, setIsGeneratingSeat] = useState(false);
 
@@ -148,7 +152,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     try {
       if (isRegistering) {
         if (!name || !email || !password || !seatNumber) return;
-        await signUpFan(name, email, password, seatNumber);
+        await signUpFan(name, email, password, seatNumber, { phone, country, preferredLanguage, favoriteTeam });
       } else {
         if (!email || !password) return;
         await loginUser(email, password, 'fan');
@@ -406,6 +410,55 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white outline-none"
               />
             </div>
+
+            {isRegistering && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="fan-phone" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Phone</label>
+                  <input
+                    id="fan-phone"
+                    type="tel"
+                    value={phone} onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 555 000 1234"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="fan-country" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Country</label>
+                  <input
+                    id="fan-country"
+                    type="text"
+                    value={country} onChange={(e) => setCountry(e.target.value)}
+                    placeholder="United States"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="fan-language" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Language</label>
+                  <select
+                    id="fan-language"
+                    value={preferredLanguage} onChange={(e) => setPreferredLanguage(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white outline-none"
+                  >
+                    <option>English</option>
+                    <option>Spanish</option>
+                    <option>Portuguese</option>
+                    <option>French</option>
+                    <option>Arabic</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="fan-team" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Favorite Team</label>
+                  <input
+                    id="fan-team"
+                    type="text"
+                    value={favoriteTeam} onChange={(e) => setFavoriteTeam(e.target.value)}
+                    placeholder="Argentina"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white outline-none"
+                  />
+                </div>
+              </div>
+            )}
 
             {isRegistering && (
               <div>

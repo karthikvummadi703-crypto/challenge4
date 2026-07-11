@@ -3,11 +3,15 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import { GoogleGenAI } from '@google/genai';
 import {
   Match, Volunteer, Task, FoodOrder, MedicalEmergency, IssueReport
 } from './src/types';
 
 dotenv.config();
+
+const geminiApiKey = process.env.GEMINI_API_KEY || '';
+const genAI = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
 const app = express();
 const PORT = 5000;
@@ -21,10 +25,10 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   if (isDev) {
     res.setHeader('Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
   } else {
     res.setHeader('Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
   }
   next();
 });
@@ -417,7 +421,7 @@ app.post('/api/ai/command', async (req: Request, res: Response) => {
   const text = sanitize(req.body.text);
   if (!text) return badRequest(res, 'Command string is required.');
 
-  // Forward to n8n webhook if configured
+  // Forward to n8n webhook if configured — n8n is the primary orchestration router
   if (config.n8nAiAssistantUrl.trim()) {
     try {
       const upstream = await fetch(config.n8nAiAssistantUrl, {
@@ -443,9 +447,39 @@ app.post('/api/ai/command', async (req: Request, res: Response) => {
         const aiResponse = data.output || data.text || data.response || JSON.stringify(data);
         return res.json({ response: aiResponse, source: 'n8n Webhook' });
       }
-      console.warn('[Nexus] n8n returned non-OK status; falling back to local engine.');
+      console.warn('[Nexus] n8n returned non-OK status; falling back to Gemini.');
     } catch (err) {
-      console.warn('[Nexus] n8n unreachable; falling back to local engine.', err);
+      console.warn('[Nexus] n8n unreachable; falling back to Gemini.', err);
+    }
+  }
+
+  // ── Gemini AI (direct) ────────────────────────────────────────────────────
+  // Used when n8n is unconfigured/unreachable — gives genuine generative answers
+  // instead of the canned rule-based responses below.
+  if (genAI) {
+    try {
+      const stadiumContext = `You are Nexus AI, the stadium intelligence assistant for a FIFA World Cup 2026 venue.
+Current live telemetry:
+- Volunteers: ${volunteers.filter(v => v.status === 'active').length} active / ${volunteers.length} total
+- Food orders: ${foodOrders.filter(o => o.status === 'pending').length} pending / ${foodOrders.length} total
+- Issue reports: ${issues.filter(i => i.status === 'open').length} open / ${issues.length} total
+- Medical emergencies: ${emergencies.filter(e => e.status === 'active').length} active
+- Attendance: 48,567
+
+Answer the operator's question concisely (2-4 sentences), in character as a stadium operations assistant. Question: ${text}`;
+
+      const result = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: stadiumContext,
+      });
+
+      const aiResponse = result.text?.trim();
+      if (aiResponse) {
+        return res.json({ response: aiResponse, source: 'Gemini AI' });
+      }
+      console.warn('[Nexus] Gemini returned an empty response; falling back to local engine.');
+    } catch (err) {
+      console.warn('[Nexus] Gemini request failed; falling back to local engine.', err);
     }
   }
 
