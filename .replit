@@ -42,3 +42,15 @@ externalPort = 3000
 deploymentTarget = "autoscale"
 run = ["node", "dist/server.cjs"]
 build = ["npm", "run", "build"]
+
+[userenv]
+
+[userenv.shared]
+VITE_FIREBASE_AUTH_DOMAIN = "fifa-world-cup-38005.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID = "fifa-world-cup-38005"
+VITE_FIREBASE_STORAGE_BUCKET = "fifa-world-cup-38005.firebasestorage.app"
+VITE_FIREBASE_MESSAGING_SENDER_ID = "670256209889"
+VITE_FIREBASE_APP_ID = "1:670256209889:web:2d9718c3463c4874a47ca0"
+VITE_FIREBASE_MEASUREMENT_ID = "G-PGR7Z00BVP"
+VITE_N8N_WEBHOOK_TEST_URL = "https://karthik-vummadi.app.n8n.cloud/webhook-test/nexus-router"
+VITE_N8N_WEBHOOK_PRODUCTION_URL = "https://karthik-vummadi.app.n8n.cloud/webhook/nexus-router"

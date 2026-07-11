@@ -40,7 +40,8 @@ export const createFanProfile = async (uid: string, fullName: string, email: str
 export const createVolunteerProfile = async (
   uid: string,
   fullName: string,
-  email: string
+  email: string,
+  assignedGate: string = 'Gate A'
 ) => {
   const userRef = doc(db, 'volunteers', uid);
   await setDoc(userRef, {
@@ -48,6 +49,9 @@ export const createVolunteerProfile = async (
     fullName,
     email,
     role: 'volunteer',
+    assignedGate,
+    active: true,
+    profileCompleted: true,
     createdAt: serverTimestamp()
   });
 };
@@ -63,90 +67,70 @@ export const createAdminProfile = async (uid: string, email: string) => {
 };
 
 const findUserDocument = async (uid: string, collectionName: string) => {
-  // 1. Try by UID as document ID
+  // 1. Try by UID as document ID (canonical path)
   const docRefByUid = doc(db, collectionName, uid);
   const snapByUid = await getDoc(docRefByUid);
   if (snapByUid.exists()) {
     return snapByUid;
   }
 
-  // 2. Try by email as document ID (if auth currentUser has email)
   const authInstance = getAuth();
   const currentUser = authInstance.currentUser;
   const userEmail = currentUser?.email;
 
   if (userEmail) {
+    // 2. Try by email as document ID (legacy migration path)
     const docRefByEmail = doc(db, collectionName, userEmail);
     const snapByEmail = await getDoc(docRefByEmail);
     if (snapByEmail.exists()) {
+      // Migrate: copy to uid-keyed doc so future lookups are O(1)
       try {
-        await setDoc(docRefByUid, {
-          ...snapByEmail.data(),
-          uid,
-          email: userEmail
-        }, { merge: true });
+        await setDoc(docRefByUid, { ...snapByEmail.data(), uid, email: userEmail }, { merge: true });
       } catch (err) {
-        console.warn("Could not auto-migrate document from email key to uid key:", err);
+        console.warn('Could not migrate email-keyed document to uid-keyed:', err);
       }
       return snapByEmail;
     }
 
-    // 3. Try querying by email field
-    const q = query(collection(db, collectionName), where('email', '==', userEmail));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      const firstDoc = querySnapshot.docs[0];
+    // 3. Query by email field
+    const qEmail = query(collection(db, collectionName), where('email', '==', userEmail));
+    const qEmailSnap = await getDocs(qEmail);
+    if (!qEmailSnap.empty) {
+      const firstDoc = qEmailSnap.docs[0];
       try {
-        await setDoc(docRefByUid, {
-          ...firstDoc.data(),
-          uid,
-          email: userEmail
-        }, { merge: true });
+        await setDoc(docRefByUid, { ...firstDoc.data(), uid, email: userEmail }, { merge: true });
       } catch (err) {
-        console.warn("Could not auto-migrate queried document to uid key:", err);
+        console.warn('Could not migrate queried email document to uid-keyed:', err);
       }
       return firstDoc;
     }
   }
 
-  // 4. Try querying by uid field
+  // 4. Query by uid field (documents keyed differently)
   const qUid = query(collection(db, collectionName), where('uid', '==', uid));
-  const querySnapshotUid = await getDocs(qUid);
-  if (!querySnapshotUid.empty) {
-    const firstDoc = querySnapshotUid.docs[0];
+  const qUidSnap = await getDocs(qUid);
+  if (!qUidSnap.empty) {
+    const firstDoc = qUidSnap.docs[0];
     try {
-      await setDoc(docRefByUid, {
-        ...firstDoc.data(),
-        uid
-      }, { merge: true });
+      await setDoc(docRefByUid, { ...firstDoc.data(), uid }, { merge: true });
     } catch (err) {
-      console.warn("Could not auto-migrate queried uid document to uid key:", err);
+      console.warn('Could not migrate uid-field document to uid-keyed:', err);
     }
     return firstDoc;
   }
 
-  // 5. Try querying by email field using uid if email matches (or search for doc matching any email/uid field combo)
   return null;
 };
 
 export const getUserRole = async (uid: string): Promise<'admin' | 'volunteer' | 'fan' | null> => {
-  // Check admins collection
   const adminDoc = await findUserDocument(uid, 'admins');
-  if (adminDoc) {
-    return 'admin';
-  }
+  if (adminDoc) return 'admin';
 
-  // Check volunteers collection
   const volunteerDoc = await findUserDocument(uid, 'volunteers');
-  if (volunteerDoc) {
-    return 'volunteer';
-  }
+  if (volunteerDoc) return 'volunteer';
 
-  // Check fans collection
   const fanDoc = await findUserDocument(uid, 'fans');
-  if (fanDoc) {
-    return 'fan';
-  }
+  if (fanDoc) return 'fan';
 
   return null;
 };
@@ -166,45 +150,53 @@ export const updateLastLogin = async (uid: string, role: 'admin' | 'volunteer' |
   await updateDoc(userRef, {
     lastLogin: serverTimestamp()
   }).catch((err) => {
-    // If updateDoc fails (e.g. volunteers or admins without lastLogin field write permissions), we handle gracefully
     console.warn('Could not update lastLogin:', err);
   });
 };
 
+/**
+ * Creates a Firebase Auth account and Firestore profile for a volunteer
+ * without disrupting the currently signed-in admin session.
+ * Uses a secondary Firebase app instance that is created and destroyed per call.
+ */
 export const adminCreateVolunteer = async (
   fullName: string,
   email: string,
-  password: string
+  password: string,
+  assignedGate: string = 'Gate A'
 ) => {
   // @ts-ignore
   const env = import.meta.env || {};
+
+  // Use the same project config as the main app — critical fix:
+  // previously this used a hardcoded wrong project, causing volunteers to be
+  // registered in a different Firebase project than where they tried to log in.
   const firebaseConfig = {
-    apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyA59SvwxHIbZE8whPEnh6hIeJlS1ZX9agY",
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "random-password-generato-e4466.firebaseapp.com",
-    projectId: env.VITE_FIREBASE_PROJECT_ID || "random-password-generato-e4466",
-    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "random-password-generato-e4466.firebasestorage.app",
-    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "894235631815",
-    appId: env.VITE_FIREBASE_APP_ID || "1:894235631815:web:b0b5a4ccfd9ec04f68dee2"
+    apiKey: env.VITE_FIREBASE_API_KEY || env.GOOGLE_API_KEY,
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "fifa-world-cup-38005.firebaseapp.com",
+    projectId: env.VITE_FIREBASE_PROJECT_ID || "fifa-world-cup-38005",
+    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "fifa-world-cup-38005.firebasestorage.app",
+    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "670256209889",
+    appId: env.VITE_FIREBASE_APP_ID || "1:670256209889:web:2d9718c3463c4874a47ca0"
   };
-  
+
   const existingApps = getApps();
-  const secondaryApp = existingApps.find(app => app.name === 'SecondaryAdminApp')
+  const secondaryApp = existingApps.find(a => a.name === 'SecondaryAdminApp')
     ? getApp('SecondaryAdminApp')
     : initializeApp(firebaseConfig, 'SecondaryAdminApp');
-    
+
   const secondaryAuth = getAuth(secondaryApp);
-  
+
   try {
     const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     const uid = userCredential.user.uid;
-    await createVolunteerProfile(uid, fullName, email);
+    await createVolunteerProfile(uid, fullName, email, assignedGate);
     await signOut(secondaryAuth);
   } finally {
     try {
       await deleteApp(secondaryApp);
     } catch (e) {
-      console.warn("Failed to delete secondary app:", e);
+      console.warn('Failed to clean up secondary Firebase app:', e);
     }
   }
 };
-
