@@ -12,7 +12,9 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
 - Dev: `npm run dev` (bound to the "Start application" workflow, serves on port 5000 — Express + Vite middleware).
 - Build: `npm run build` (Vite client build + esbuild server bundle to `dist/`).
 - Start (prod): `npm start` (runs `dist/server.cjs`).
-- Tests: `npm test` (Vitest, 24 tests in `tests/server.test.ts`).
+- Tests: `npm test` (Vitest, `tests/server.test.ts`).
+- Firestore rules test: `npm run test:rules` (boots a local Firestore emulator via `firebase emulators:exec` and runs `tests/firestoreRules.test.ts` against it — excluded from the default `npm test` run since it needs the emulator).
+- Admin integrity check: `npm run verify:admin` (fails if the live `admins` collection doesn't have exactly one document; requires the `FIREBASE_SERVICE_ACCOUNT_KEY` secret).
 
 ## Data flow
 - Firestore is the source of truth for `admins`, `volunteers`, `fans`,
@@ -35,6 +37,49 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
   that are legacy from before the Firestore migration; several dashboards
   already read/write Firestore directly instead. See proposed follow-up task
   for consolidating this.
+
+## Admin security model
+- Role is determined purely by Firestore document existence
+  (`admins/{uid}`, `volunteers/{uid}`, `fans/{uid}`) — never by email pattern
+  matching or client-supplied flags. `loginUser` (`src/context/authContext.tsx`)
+  signs the user out immediately and throws "Access Denied" if their UID has
+  no matching role doc for the portal they tried to enter.
+- No client code can create an `admins/{uid}` document — `firestore.rules`
+  only allows `create`/privileged `update`/`delete` on `admins` and
+  `volunteers` when the requester is already an admin. The single admin is
+  seeded once via `scripts/seedAdmin.ts` (Firebase Admin SDK, bypasses rules,
+  refuses to run if an admin doc already exists).
+- `npm run verify:admin` re-checks the one-admin invariant against the live
+  database at any later point (manual admin console edits, etc).
+- `npm run test:rules` proves at the rules layer (not just app code) that a
+  non-admin can never read/write another user's `admins/{uid}` doc or
+  self-escalate a `volunteers/{uid}` doc beyond `lastLogin`.
+- Actually deploying `firestore.rules` to production requires either the
+  `FIREBASE_SERVICE_ACCOUNT_KEY` secret (not set in this environment) or
+  running `npx firebase login` + `npx firebase deploy --only firestore:rules`
+  interactively from the Replit shell — ask before doing either.
+
+## Demo Mode (judge-facing, no real Firebase Auth/Firestore)
+- Entry point: "Try Demo Mode" on `LandingPage.tsx` → role picker → lands
+  directly in that dashboard with seeded sample data.
+- `src/services/demoStore.ts` — in-memory mock collections, persisted to
+  `sessionStorage` (never `localStorage`) and synced across tabs/views in the
+  same browser session via `BroadcastChannel`. Has a `resetDemoStore()` used
+  by the "Reset Demo Data" control.
+- `src/services/dataSource.ts` — the ONLY place dashboards call for Firestore
+  reads/writes (`subscribeCollection`/`addRecord`/`updateRecord`/`deleteRecord`).
+  It routes to `demoStore` when Demo Mode is active and to real Firestore
+  otherwise — dashboards never fork or know which backend they're using.
+- `src/context/demoModeContext.tsx` — `enterDemoMode`/`exitDemoMode`/
+  `resetDemoData`; signs a real user out (with confirmation) before entering
+  Demo Mode so real and mock sessions can never coexist.
+- AI chat in Demo Mode calls the unauthenticated `/api/ai/demo-command` route
+  (server.ts) instead of the authed `/api/ai/command` — same n8n → Gemini →
+  local-engine pipeline, fed sanitized client-supplied demo numbers instead of
+  real Firestore telemetry. Safe to leave unauthenticated: it can only ever
+  produce chat text, never read/write Firestore.
+- `DemoBadge.tsx` renders a persistent "DEMO MODE" banner + reset/exit
+  controls on every dashboard while active.
 
 ## Required secrets/env vars
 - `VITE_FIREBASE_API_KEY` — Firebase Web API key (client-side, public but required).

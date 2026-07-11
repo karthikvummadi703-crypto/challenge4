@@ -8,8 +8,11 @@ import { Volunteer, Task } from '../types';
 import StadiumSeatMap from './StadiumSeatMap';
 import { useAuth } from '../context/authContext';
 import { getFriendlyErrorMessage } from '../services/authService';
-import { collection, getDocs, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { subscribeCollection, updateRecord } from '../services/dataSource';
+import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
+import { useDemoMode } from '../context/demoModeContext';
 
 interface VolunteerDashboardProps {
   onLogout: () => void;
@@ -17,6 +20,8 @@ interface VolunteerDashboardProps {
 
 export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps) {
   const { user, profile, role, loginUser, logoutUser, error, setError, loading } = useAuth();
+  const { isDemoMode, demoRole, demoProfile } = useDemoMode();
+  const isVolunteerDemo = isDemoMode && demoRole === 'volunteer';
 
   // Authentication State
   const [email, setEmail] = useState('');
@@ -27,14 +32,21 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
   // Available demo accounts loaded from Firestore volunteers collection
   const [demoAccounts, setDemoAccounts] = useState<any[]>([]);
 
-  const currentVolunteer = user && role === 'volunteer' ? {
+  const currentVolunteer = isVolunteerDemo && demoProfile ? {
+    id: demoProfile.uid,
+    name: demoProfile.fullName,
+    volunteerId: demoProfile.volunteerId || 'VOL-DEMO1',
+    assignedGate: demoProfile.assignedGate || 'Gate A',
+    email: demoProfile.email,
+    status: 'active'
+  } : (user && role === 'volunteer' ? {
     id: user.uid,
     name: profile?.fullName || 'Volunteer',
     volunteerId: user.uid ? `VOL-${user.uid.substring(0, 4).toUpperCase()}` : 'VOL-0000',
     assignedGate: 'Gate A',
     email: user.email,
     status: 'active'
-  } : null;
+  } : null);
 
   const isAuthenticated = !!currentVolunteer;
 
@@ -78,8 +90,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
   // Set up real-time listener for tasks
   useEffect(() => {
     if (isAuthenticated && currentVolunteer) {
-      const q = query(collection(db, 'tasks'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribe = subscribeCollection('tasks', (snapshot) => {
         const dataList: Task[] = [];
         snapshot.forEach((docSnap) => {
           const t = docSnap.data();
@@ -107,8 +118,6 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
         } else {
           setHighlightedSeat(undefined);
         }
-      }, (err) => {
-        console.error("Error subscribing to tasks in real-time:", err);
       });
 
       return () => unsubscribe();
@@ -154,8 +163,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
 
-      const taskRef = doc(db, 'tasks', taskId);
-      await updateDoc(taskRef, {
+      await updateRecord('tasks', taskId, {
         status: 'accepted',
         assignedTo: currentVolunteer.volunteerId
       });
@@ -164,14 +172,12 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
       const linkedId = (task as any).linkedId;
       if (linkedId) {
         if (task.type === 'Deliver Food') {
-          const orderRef = doc(db, 'foodOrders', linkedId);
-          await updateDoc(orderRef, {
+          await updateRecord('foodOrders', linkedId, {
             status: 'preparing'
           });
         } else {
           // It's a seat/complaint report, set assigned volunteer
-          const issueRef = doc(db, 'issueReports', linkedId);
-          await updateDoc(issueRef, {
+          await updateRecord('issueReports', linkedId, {
             assignedVolunteer: currentVolunteer.volunteerId
           });
         }
@@ -191,8 +197,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
       const completionTime = new Date().toISOString();
       const deliveryTimeMs = Date.now() - new Date(task.timestamp).getTime();
 
-      const taskRef = doc(db, 'tasks', taskId);
-      await updateDoc(taskRef, {
+      await updateRecord('tasks', taskId, {
         status: 'completed',
         deliveryTimeMs,
         completedAt: completionTime
@@ -202,19 +207,16 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
       const linkedId = (task as any).linkedId;
       if (linkedId) {
         if (task.type === 'Deliver Food') {
-          const orderRef = doc(db, 'foodOrders', linkedId);
-          await updateDoc(orderRef, {
+          await updateRecord('foodOrders', linkedId, {
             status: 'delivered'
           });
         } else if (task.type === 'Medical Emergency') {
-          const emRef = doc(db, 'emergencyRequests', linkedId);
-          await updateDoc(emRef, {
+          await updateRecord('emergencyRequests', linkedId, {
             status: 'resolved'
           });
         } else {
           // Seating/Incidents
-          const issueRef = doc(db, 'issueReports', linkedId);
-          await updateDoc(issueRef, {
+          await updateRecord('issueReports', linkedId, {
             status: 'resolved'
           });
         }

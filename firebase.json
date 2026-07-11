@@ -1,0 +1,15 @@
+{
+  "firestore": {
+    "database": "ai-studio-nexusaififastadi-bc442396-6d24-4193-a983-33c56303f6a0",
+    "rules": "firestore.rules"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

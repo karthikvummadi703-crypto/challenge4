@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LandingPage from './components/LandingPage';
 import OrganizerDashboard from './components/OrganizerDashboard';
@@ -11,9 +11,11 @@ import VolunteerDashboard from './components/VolunteerDashboard';
 import FanDashboard from './components/FanDashboard';
 import WebhookSettingsModal from './components/WebhookSettingsModal';
 import SplashScreen from './components/SplashScreen';
+import DemoBadge from './components/DemoBadge';
 import { AuthProvider } from './context/authContext';
+import { DemoModeProvider, useDemoMode, DemoRole } from './context/demoModeContext';
 
-export default function App() {
+function AppContent() {
   // Initial splash screen state
   const [showSplash, setShowSplash] = useState(true);
 
@@ -23,6 +25,8 @@ export default function App() {
   // Webhook Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const { isDemoMode, demoRole, enterDemoMode, exitDemoMode } = useDemoMode();
+
   // Generated images reference URLs
   const stadiumBg = '/src/assets/images/stadium_background_1783681883835.jpg';
   const ronaldoConcept = '/src/assets/images/player_ronaldo_concept_1783681901181.jpg';
@@ -31,13 +35,27 @@ export default function App() {
     setCurrentRole(role);
   };
 
+  // Stay on whatever role Demo Mode was restored into (e.g. after a same-tab refresh).
+  useEffect(() => {
+    if (isDemoMode && demoRole && currentRole === 'landing') {
+      setCurrentRole(demoRole === 'organizer' ? 'organizer' : demoRole);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoMode, demoRole]);
+
+  const handleEnterDemo = (role: DemoRole) => {
+    const started = enterDemoMode(role);
+    if (started) setCurrentRole(role);
+  };
+
   const handleLogout = () => {
+    if (isDemoMode) exitDemoMode();
     setCurrentRole('landing');
   };
 
   return (
-    <AuthProvider>
-      <div id="app-root-container" className="min-h-screen text-white font-sans overflow-x-hidden selection:bg-emerald-500 selection:text-black relative">
+    <div id="app-root-container" className="min-h-screen text-white font-sans overflow-x-hidden selection:bg-emerald-500 selection:text-black relative">
+        {isDemoMode && <DemoBadge onExit={handleLogout} />}
         
         {/* Global Stadium Background Image with dark elegant overlay */}
         <div 
@@ -78,6 +96,7 @@ export default function App() {
               {currentRole === 'landing' && (
                 <LandingPage 
                   onSelectRole={handleRoleSelection} 
+                  onEnterDemo={handleEnterDemo}
                   stadiumBg={stadiumBg}
                   ronaldoConcept={ronaldoConcept}
                 />
@@ -114,7 +133,16 @@ export default function App() {
           onClose={() => setIsSettingsOpen(false)} 
         />
 
-      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <DemoModeProvider>
+        <AppContent />
+      </DemoModeProvider>
     </AuthProvider>
   );
 }

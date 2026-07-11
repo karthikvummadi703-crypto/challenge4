@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserCheck, Shield, HelpCircle, ArrowRight, Play } from 'lucide-react';
+import { Users, UserCheck, Shield, HelpCircle, ArrowRight, Play, FlaskConical, X } from 'lucide-react';
 import Antigravity from './Antigravity';
+import { DemoRole } from '../context/demoModeContext';
 
 interface LandingPageProps {
   onSelectRole: (role: 'organizer' | 'volunteer' | 'fan') => void;
+  onEnterDemo: (role: DemoRole) => void;
   stadiumBg: string;
   ronaldoConcept: string;
 }
 
-export default function LandingPage({ onSelectRole, stadiumBg, ronaldoConcept }: LandingPageProps) {
+export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, ronaldoConcept }: LandingPageProps) {
+  const [showDemoPicker, setShowDemoPicker] = useState(false);
   return (
     <div id="landing-page-root" className="relative min-h-screen bg-slate-950 text-white flex flex-col justify-between overflow-hidden">
       
@@ -185,12 +188,73 @@ export default function LandingPage({ onSelectRole, stadiumBg, ronaldoConcept }:
 
           </div>
 
-          <div className="pt-2 text-center">
-            <span className="text-[10px] text-slate-600 font-mono block uppercase">FIFA WORLD CUP 2026 STADIUM INTELLIGENCE CONTEXT</span>
+          <div className="pt-2 text-center border-t border-slate-800/60 mt-2">
+            <button
+              onClick={() => setShowDemoPicker(true)}
+              className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 bg-amber-500/5 hover:bg-amber-500/10 rounded-xl py-3 transition-colors cursor-pointer"
+            >
+              <Play className="h-3.5 w-3.5" />
+              Try Demo Mode
+            </button>
+            <span className="text-[10px] text-slate-600 font-mono block uppercase mt-3">FIFA WORLD CUP 2026 STADIUM INTELLIGENCE CONTEXT</span>
           </div>
         </div>
 
       </main>
+
+      {/* Demo Mode role picker — no Firebase Auth, no real Firestore writes */}
+      {showDemoPicker && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-6"
+          onClick={() => setShowDemoPicker(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-5 shadow-[0_0_60px_rgba(245,158,11,0.15)]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-amber-400" />
+                <h3 className="font-sans font-bold text-lg text-white">Try Demo Mode</h3>
+              </div>
+              <button onClick={() => setShowDemoPicker(false)} className="text-slate-500 hover:text-white cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Explore any dashboard instantly with realistic sample data. No sign-in required,
+              and nothing you do here touches the real production data.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => { setShowDemoPicker(false); onEnterDemo('organizer'); }}
+                className="w-full text-left p-3 rounded-xl bg-slate-950/60 hover:bg-slate-950 border border-slate-800 hover:border-amber-500/40 transition-all flex items-center gap-3 cursor-pointer"
+              >
+                <Shield className="h-4 w-4 text-amber-400 shrink-0" />
+                <span className="text-sm font-semibold text-white">Organizer Dashboard</span>
+              </button>
+              <button
+                onClick={() => { setShowDemoPicker(false); onEnterDemo('volunteer'); }}
+                className="w-full text-left p-3 rounded-xl bg-slate-950/60 hover:bg-slate-950 border border-slate-800 hover:border-amber-500/40 transition-all flex items-center gap-3 cursor-pointer"
+              >
+                <UserCheck className="h-4 w-4 text-amber-400 shrink-0" />
+                <span className="text-sm font-semibold text-white">Volunteer Dashboard</span>
+              </button>
+              <button
+                onClick={() => { setShowDemoPicker(false); onEnterDemo('fan'); }}
+                className="w-full text-left p-3 rounded-xl bg-slate-950/60 hover:bg-slate-950 border border-slate-800 hover:border-amber-500/40 transition-all flex items-center gap-3 cursor-pointer"
+              >
+                <Users className="h-4 w-4 text-amber-400 shrink-0" />
+                <span className="text-sm font-semibold text-white">Fan Portal</span>
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Footer credits */}
       <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-slate-900/40 text-[10px] text-slate-500 font-medium">

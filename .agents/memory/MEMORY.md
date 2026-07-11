@@ -1,3 +1,5 @@
 - [Volunteer Login Root Cause Fix](volunteer-login-fix.md) — three root causes: PERMISSION_DENIED propagation, wrong Firebase project in adminCreateVolunteer, missing Firestore rules for 6 collections.
 - [Test Suite](test-suite.md) — 24 vitest tests in tests/server.test.ts; run with npm test. All pass. Vitest config in vitest.config.ts.
 - [Nexus AI project quirks](nexus-ai-project-quirks.md) — imported repo needs VITE_FIREBASE_API_KEY + GEMINI_API_KEY secrets; server.ts still has legacy in-memory REST endpoints alongside Firestore.
+- [Firebase emulator setup](firebase-emulator-setup.md) — firebase-tools Firestore emulator needs JDK 21+ (17 fails); rules-unit-tests need their own npm script, excluded from default vitest run.
+- [Nexus Demo Mode architecture](nexus-demo-mode-architecture.md) — dashboards route all Firestore calls through dataSource.ts so Demo Mode can swap backends without forking components.

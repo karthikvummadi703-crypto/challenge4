@@ -10,9 +10,9 @@ import StadiumSeatMap from './StadiumSeatMap';
 import { useAuth } from '../context/authContext';
 import { adminCreateVolunteer } from '../services/userService';
 import { getFriendlyErrorMessage } from '../services/authService';
-import { collection, getDocs, deleteDoc, doc, onSnapshot, query, addDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { authedFetch } from '../services/apiClient';
+import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
+import { subscribeCollection, addRecord, deleteRecord } from '../services/dataSource';
+import { useDemoMode } from '../context/demoModeContext';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
@@ -23,6 +23,8 @@ interface OrganizerDashboardProps {
 
 export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept, onOpenSettings }: OrganizerDashboardProps) {
   const { user, role, loginUser, logoutUser, error, setError, loading } = useAuth();
+  const { isDemoMode, demoRole } = useDemoMode();
+  const isOrganizerDemo = isDemoMode && demoRole === 'organizer';
 
   // Authentication State
   const [email, setEmail] = useState('');
@@ -30,7 +32,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const isAuthenticated = !!user && role === 'admin';
+  const isAuthenticated = isOrganizerDemo || (!!user && role === 'admin');
 
   // Dashboard Active Tab
   const [activeTab, setActiveTab] = useState<'dashboard' | 'setup' | 'volunteers'>('dashboard');
@@ -89,7 +91,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     if (!isAuthenticated) return;
 
     // 1. Subscribe to Volunteers
-    const unsubVolunteers = onSnapshot(collection(db, 'volunteers'), (snapshot) => {
+    const unsubVolunteers = subscribeCollection('volunteers', (snapshot) => {
       const vols: Volunteer[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -108,7 +110,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     });
 
     // 2. Subscribe to Fans (Attendance)
-    const unsubFans = onSnapshot(collection(db, 'fans'), (snapshot) => {
+    const unsubFans = subscribeCollection('fans', (snapshot) => {
       setStats(prev => ({
         ...prev,
         attendance: snapshot.size > 0 ? (snapshot.size + 48500) : 0
@@ -116,7 +118,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     });
 
     // 3. Subscribe to Food Orders
-    const unsubOrders = onSnapshot(collection(db, 'foodOrders'), (snapshot) => {
+    const unsubOrders = subscribeCollection('foodOrders', (snapshot) => {
       setStats(prev => ({
         ...prev,
         totalOrders: snapshot.size
@@ -124,7 +126,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     });
 
     // 4. Subscribe to Issue Reports
-    const unsubIssues = onSnapshot(collection(db, 'issueReports'), (snapshot) => {
+    const unsubIssues = subscribeCollection('issueReports', (snapshot) => {
       const openIssuesCount = snapshot.docs.filter(d => d.data().status === 'open' || d.data().status === 'pending').length;
       
       const newAlerts: any[] = [];
@@ -148,7 +150,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     });
 
     // 5. Subscribe to Emergency Requests
-    const unsubEmergencies = onSnapshot(collection(db, 'emergencyRequests'), (snapshot) => {
+    const unsubEmergencies = subscribeCollection('emergencyRequests', (snapshot) => {
       const activeEmergenciesCount = snapshot.docs.filter(d => d.data().status === 'active').length;
       
       const newEmergencies: any[] = [];
@@ -172,7 +174,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     });
 
     // 6. Subscribe to Matches
-    const unsubMatches = onSnapshot(collection(db, 'matches'), (snapshot) => {
+    const unsubMatches = subscribeCollection('matches', (snapshot) => {
       const matchesList: Match[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -193,7 +195,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     });
 
     // 7. Subscribe to systemConfig for published status
-    const unsubConfig = onSnapshot(collection(db, 'systemConfig'), (snapshot) => {
+    const unsubConfig = subscribeCollection('systemConfig', (snapshot) => {
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
         if (data.isPublished) {
@@ -241,7 +243,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const handleSaveMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, 'matches'), {
+      await addRecord('matches', {
         stadiumName,
         matchName,
         matchDate,
@@ -252,7 +254,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       });
 
       // Update the system configuration to mark published
-      await addDoc(collection(db, 'systemConfig'), {
+      await addRecord('systemConfig', {
         isPublished: true,
         publishedAt: new Date().toISOString()
       });
@@ -274,13 +276,27 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
 
     setIsCreatingVolunteer(true);
     try {
-      // Create Volunteer via admin endpoint/secondary instance
-      await adminCreateVolunteer(
-        newVolunteerName,
-        newVolunteerEmail,
-        newVolunteerPassword,
-        newVolunteerGate
-      );
+      if (isOrganizerDemo) {
+        // Demo Mode: skip Firebase Auth entirely and write straight to the
+        // in-memory demo store so the new volunteer shows up instantly.
+        await addRecord('volunteers', {
+          uid: `demo-vol-${Date.now()}`,
+          fullName: newVolunteerName.trim(),
+          email: newVolunteerEmail.toLowerCase().trim(),
+          role: 'volunteer',
+          assignedGate: newVolunteerGate,
+          active: true,
+          createdAt: new Date().toISOString(),
+        });
+      } else {
+        // Create Volunteer via admin endpoint/secondary instance
+        await adminCreateVolunteer(
+          newVolunteerName,
+          newVolunteerEmail,
+          newVolunteerPassword,
+          newVolunteerGate
+        );
+      }
 
       // Clean up fields and reload list
       setNewVolunteerName('');
@@ -301,7 +317,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const handleRemoveVolunteer = async (id: string) => {
     try {
       // Delete volunteer from Firestore volunteers collection
-      await deleteDoc(doc(db, 'volunteers', id));
+      await deleteRecord('volunteers', id);
       await loadStatsAndData();
     } catch (e) {
       console.error("Failed to remove volunteer:", e);
@@ -311,7 +327,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   // Publish Event Handler
   const handlePublishEvent = async () => {
     try {
-      await addDoc(collection(db, 'systemConfig'), {
+      await addRecord('systemConfig', {
         isPublished: true,
         publishedAt: new Date().toISOString()
       });
@@ -332,23 +348,13 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     setIsSendingMsg(true);
 
     try {
-      const response = await authedFetch('/api/ai/command', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textToSend })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(prev => [...prev, {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          text: data.response,
-          source: data.source
-        }]);
-      } else {
-        throw new Error();
-      }
+      const data = await sendAICommandRequest(textToSend);
+      setMessages(prev => [...prev, {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: data.response,
+        source: data.source
+      }]);
     } catch (e) {
       setMessages(prev => [...prev, {
         id: `ai-${Date.now()}`,

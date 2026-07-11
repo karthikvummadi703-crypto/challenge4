@@ -8,9 +8,11 @@ import {
 } from 'lucide-react';
 import StadiumSeatMap from './StadiumSeatMap';
 import { useAuth } from '../context/authContext';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { authedFetch } from '../services/apiClient';
+import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
+import { addRecord } from '../services/dataSource';
+import { useDemoMode } from '../context/demoModeContext';
 
 interface FanDashboardProps {
   onLogout: () => void;
@@ -33,12 +35,19 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingSeat, setIsGeneratingSeat] = useState(false);
 
-  const isAuthenticated = !!user && role === 'fan';
-  const currentUser = user ? {
+  const { isDemoMode, demoRole, demoProfile } = useDemoMode();
+  const isFanDemo = isDemoMode && demoRole === 'fan';
+
+  const isAuthenticated = isFanDemo || (!!user && role === 'fan');
+  const currentUser = isFanDemo && demoProfile ? {
+    name: demoProfile.fullName,
+    email: demoProfile.email,
+    seatNumber: demoProfile.seatNumber || 'A-118'
+  } : (user ? {
     name: profile?.fullName || user.displayName || 'Demo Fan',
     email: user.email,
     seatNumber: profile?.seatNumber || seatNumber
-  } : null;
+  } : null);
 
   const generateUniqueSeatNumber = async (): Promise<string> => {
     const letters = ['A', 'B', 'C', 'VIP'];
@@ -180,7 +189,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     const totalPrice = orderedItems.reduce((acc, cur) => acc + (Number(cur.price) * Number(cur.quantity)), 0);
 
     try {
-      const orderDoc = await addDoc(collection(db, 'foodOrders'), {
+      const orderDoc = await addRecord('foodOrders', {
         items: orderedItems,
         seatNumber: currentUser?.seatNumber || seatNumber,
         totalPrice,
@@ -191,7 +200,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
       });
 
       const taskDetails = `Deliver ${orderedItems.map((i: any) => `${i.name} (x${i.quantity})`).join(", ")}`;
-      await addDoc(collection(db, 'tasks'), {
+      await addRecord('tasks', {
         type: 'Deliver Food',
         details: taskDetails,
         seatNumber: currentUser?.seatNumber || seatNumber,
@@ -230,7 +239,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     if (!emergencySeat.trim()) return;
 
     try {
-      const emergencyDoc = await addDoc(collection(db, 'emergencyRequests'), {
+      const emergencyDoc = await addRecord('emergencyRequests', {
         seatNumber: emergencySeat,
         status: 'active',
         timestamp: new Date().toISOString(),
@@ -238,7 +247,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
         fanName: currentUser?.name || 'Anonymous Fan'
       });
 
-      await addDoc(collection(db, 'tasks'), {
+      await addRecord('tasks', {
         type: 'Medical Emergency',
         details: 'CRITICAL: First Responder assistance requested.',
         seatNumber: emergencySeat,
@@ -267,7 +276,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     if (!issueDescription.trim()) return;
 
     try {
-      const issueDoc = await addDoc(collection(db, 'issueReports'), {
+      const issueDoc = await addRecord('issueReports', {
         category: selectedIssueCategory,
         seatNumber: currentUser?.seatNumber || seatNumber,
         description: issueDescription,
@@ -277,7 +286,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
         fanName: currentUser?.name || 'Anonymous Fan'
       });
 
-      await addDoc(collection(db, 'tasks'), {
+      await addRecord('tasks', {
         type: selectedIssueCategory === 'Broken Seat' ? 'Seat Issue' : 'Complaint Resolution',
         details: `${selectedIssueCategory} - ${issueDescription}`,
         seatNumber: currentUser?.seatNumber || seatNumber,
@@ -311,12 +320,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     setChatInput('');
     setIsAiAnswering(true);
 
-    authedFetch('/api/ai/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: textToSend })
-    })
-      .then(res => res.json())
+    sendAICommandRequest(textToSend)
       .then(data => {
         setChatLogs(prev => [...prev, { sender: 'ai', text: data.response }]);
       })
@@ -332,12 +336,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   const triggerPresetQuery = (txt: string) => {
     setChatLogs(prev => [...prev, { sender: 'user', text: txt }]);
     setIsAiAnswering(true);
-    authedFetch('/api/ai/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: txt })
-    })
-      .then(res => res.json())
+    sendAICommandRequest(txt)
       .then(data => {
         setChatLogs(prev => [...prev, { sender: 'ai', text: data.response }]);
       })

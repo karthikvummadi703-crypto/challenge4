@@ -110,14 +110,23 @@ app.post('/api/config', requireAuth, requireAdmin, (req: Request, res: Response)
   res.json({ message: 'Configuration updated.', config });
 });
 
-// ── AI command (any authenticated fan/volunteer/admin) ─────────────────────────
+interface Telemetry {
+  volunteersActive: number;
+  volunteersTotal: number;
+  pendingOrders: number;
+  totalOrders: number;
+  openIssues: number;
+  totalIssues: number;
+  activeEmergencies: number;
+}
 
-app.post('/api/ai/command', requireAuth, async (req: AuthedRequest, res: Response) => {
-  const text = sanitize(req.body.text);
-  if (!text) return badRequest(res, 'Command string is required.');
-
-  const telemetry = await getStadiumTelemetry();
-
+/**
+ * Shared answer pipeline: n8n webhook → Gemini → local rule-based engine.
+ * Used by both the real, authenticated `/api/ai/command` (fed live Firestore
+ * telemetry) and the unauthenticated `/api/ai/demo-command` (fed sanitized
+ * in-memory demo numbers from the client — never real Firestore data).
+ */
+async function answerStadiumQuestion(text: string, telemetry: Telemetry): Promise<{ response: string; source: string }> {
   // Forward to n8n webhook if configured — n8n is the primary orchestration router
   if (config.n8nAiAssistantUrl.trim()) {
     try {
@@ -142,7 +151,7 @@ app.post('/api/ai/command', requireAuth, async (req: AuthedRequest, res: Respons
       if (upstream.ok) {
         const data = await upstream.json();
         const aiResponse = data.output || data.text || data.response || JSON.stringify(data);
-        return res.json({ response: aiResponse, source: 'n8n Webhook' });
+        return { response: aiResponse, source: 'n8n Webhook' };
       }
       console.warn('[Nexus] n8n returned non-OK status; falling back to Gemini.');
     } catch (err) {
@@ -172,7 +181,7 @@ Answer the operator's question concisely (2-4 sentences), in character as a stad
 
       const aiResponse = result.text?.trim();
       if (aiResponse) {
-        return res.json({ response: aiResponse, source: 'Gemini AI' });
+        return { response: aiResponse, source: 'Gemini AI' };
       }
       console.warn('[Nexus] Gemini returned an empty response; falling back to local engine.');
     } catch (err) {
@@ -221,7 +230,66 @@ Try: *"Summarize today's incidents"*, *"Food orders pending?"*, *"Which gate is 
 Ask me about incidents, volunteers, gate congestion, or food logistics.`;
   }
 
-  res.json({ response: responseText, source: 'Nexus Local Engine' });
+  return { response: responseText, source: 'Nexus Local Engine' };
+}
+
+/** Stricter limiter for the unauthenticated demo AI endpoint — 30 requests/min per IP. */
+const demoAiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many demo requests. Please slow down.' },
+});
+
+/** Bounds-checks a telemetry field from the (untrusted) demo client payload. */
+const toSafeCount = (val: unknown): number => {
+  const n = Number(val);
+  return Number.isFinite(n) && n >= 0 && n <= 100_000 ? Math.floor(n) : 0;
+};
+
+// ── AI command — Demo Mode (no Firebase Auth; client-supplied demo telemetry only) ──
+// Never touches Firestore or Firebase Admin — safe to leave unauthenticated because
+// it can only ever produce chat text, never read/write real stadium data.
+app.post('/api/ai/demo-command', demoAiLimiter, async (req: Request, res: Response) => {
+  const text = sanitize(req.body.text);
+  if (!text) return badRequest(res, 'Command string is required.');
+
+  const t = req.body.telemetry || {};
+  const telemetry: Telemetry = {
+    volunteersActive: toSafeCount(t.volunteersActive),
+    volunteersTotal: toSafeCount(t.volunteersTotal),
+    pendingOrders: toSafeCount(t.pendingOrders),
+    totalOrders: toSafeCount(t.totalOrders),
+    openIssues: toSafeCount(t.openIssues),
+    totalIssues: toSafeCount(t.totalIssues),
+    activeEmergencies: toSafeCount(t.activeEmergencies),
+  };
+
+  try {
+    const result = await answerStadiumQuestion(text, telemetry);
+    res.json(result);
+  } catch (err) {
+    console.error('[Nexus] Demo AI command failed:', err);
+    res.status(500).json({ error: 'AI command failed.' });
+  }
+});
+
+// ── AI command (any authenticated fan/volunteer/admin) ─────────────────────────
+
+app.post('/api/ai/command', requireAuth, async (req: AuthedRequest, res: Response) => {
+  const text = sanitize(req.body.text);
+  if (!text) return badRequest(res, 'Command string is required.');
+
+  const telemetry = await getStadiumTelemetry();
+
+  try {
+    const result = await answerStadiumQuestion(text, telemetry);
+    return res.json(result);
+  } catch (err) {
+    console.error('[Nexus] AI command failed:', err);
+    return res.status(500).json({ error: 'AI command failed.' });
+  }
 });
 
 // ── Vite / static serving ─────────────────────────────────────────────────────
