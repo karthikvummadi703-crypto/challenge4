@@ -1,0 +1,1 @@
+- [Volunteer Login Root Cause Fix](volunteer-login-fix.md) — secondary Firebase app in adminCreateVolunteer must use same project config as primary app; wrong hardcoded project was the bug.

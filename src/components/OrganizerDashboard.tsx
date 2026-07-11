@@ -295,7 +295,8 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       await adminCreateVolunteer(
         newVolunteerName,
         newVolunteerEmail,
-        newVolunteerPassword
+        newVolunteerPassword,
+        newVolunteerGate
       );
 
       // Clean up fields and reload list
