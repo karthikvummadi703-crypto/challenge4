@@ -1,35 +1,94 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Global helper: Check if user is authenticated
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper: Check if user is admin
+    // Uses exists() — does NOT require a read permission on /admins
     function isAdmin() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Helper: Is resource belonging to self
+    // Uses exists() — does NOT require a read permission on /volunteers
+    function isVolunteer() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/volunteers/$(request.auth.uid));
+    }
+
+    // True when the authenticated user owns the document (keyed by their UID)
     function isOwner(uid) {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // Admin collection rules
+    // ── Role Profiles ─────────────────────────────────────────────────────────
+
+    // Admins can read/write their own profile; admins can also manage other admins
     match /admins/{uid} {
-      allow read, write: if isAdmin() || isOwner(uid);
+      allow read:  if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) || isAdmin();
     }
 
-    // Volunteer collection rules
+    // Volunteers can read/write their own profile; admins can manage all volunteers
     match /volunteers/{uid} {
-      allow read, write: if isAdmin() || isOwner(uid);
+      allow read:  if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) || isAdmin();
     }
 
-    // Fan collection rules
+    // Fans can read/write their own profile; admins can read all
     match /fans/{uid} {
-      allow read, write: if isAdmin() || isOwner(uid);
+      allow read:  if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) || isAdmin();
+    }
+
+    // ── Operational Collections ───────────────────────────────────────────────
+
+    // Tasks: visible to all logged-in users; volunteers & admins may update
+    match /tasks/{taskId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isVolunteer() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Food orders: fans & anyone authenticated can create; volunteers & admins can update
+    match /foodOrders/{orderId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isVolunteer() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Emergency requests: any authenticated user can create; volunteers & admins can update
+    match /emergencyRequests/{reqId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isVolunteer() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Issue reports: any authenticated user can create; volunteers & admins can update
+    match /issueReports/{reportId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isVolunteer() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Matches: all authenticated users can read; only admins can write
+    match /matches/{matchId} {
+      allow read:  if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // System config: all authenticated users can read; only admins can write
+    match /systemConfig/{configId} {
+      allow read:  if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }
