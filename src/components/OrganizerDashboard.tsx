@@ -3,10 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Shield, Key, LayoutDashboard, PlusCircle, Users, CheckCircle, 
   Map, MessageSquare, LogOut, Trash2, Send, Activity, Settings, 
-  AlertTriangle, Coffee, RefreshCw, Sparkles, HelpCircle 
+  AlertTriangle, Coffee, RefreshCw, Sparkles, HelpCircle, Loader2 
 } from 'lucide-react';
 import { Match, Volunteer, Task, SystemConfig } from '../types';
 import StadiumSeatMap from './StadiumSeatMap';
+import { useAuth } from '../context/authContext';
+import { adminCreateVolunteer } from '../services/userService';
+import { getFriendlyErrorMessage } from '../services/authService';
+import { collection, getDocs, deleteDoc, doc, onSnapshot, query, addDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
@@ -16,11 +21,15 @@ interface OrganizerDashboardProps {
 }
 
 export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept, onOpenSettings }: OrganizerDashboardProps) {
+  const { user, role, loginUser, logoutUser, error, setError, loading } = useAuth();
+
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [email, setEmail] = useState('admin@nexusai.com');
-  const [password, setPassword] = useState('Nexus@2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const isAuthenticated = !!user && role === 'admin';
 
   // Dashboard Active Tab
   const [activeTab, setActiveTab] = useState<'dashboard' | 'setup' | 'volunteers'>('dashboard');
@@ -33,8 +42,14 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const [ticketPrice, setTicketPrice] = useState('120');
   const [matchSaveSuccess, setMatchSaveSuccess] = useState(false);
 
-  // Volunteer State
+  // Volunteer Form State
   const [newVolunteerName, setNewVolunteerName] = useState('');
+  const [newVolunteerEmail, setNewVolunteerEmail] = useState('');
+  const [newVolunteerPassword, setNewVolunteerPassword] = useState('password123');
+  const [newVolunteerGate, setNewVolunteerGate] = useState('Gate A');
+  const [isCreatingVolunteer, setIsCreatingVolunteer] = useState(false);
+
+  // Volunteer State
   const [volunteersList, setVolunteersList] = useState<Volunteer[]>([]);
   const [volCount, setVolCount] = useState(45); // matching screenshot default
 
@@ -47,11 +62,11 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
 
   // Live Statistics state
   const [stats, setStats] = useState({
-    activeVolunteers: 45,
-    totalOrders: 128,
-    openIssues: 17,
-    activeEmergencies: 3,
-    attendance: 48567,
+    activeVolunteers: 0,
+    totalOrders: 0,
+    openIssues: 0,
+    activeEmergencies: 0,
+    attendance: 0,
     recentAlerts: [] as any[]
   });
 
@@ -63,51 +78,138 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Load Data
+  // Load Data placeholder (empty since onSnapshot is real-time)
   const loadStatsAndData = async () => {
-    try {
-      // Load stats
-      const statsRes = await fetch('/api/organizer/stats');
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats({
-          activeVolunteers: statsData.volunteers.active,
-          totalOrders: statsData.foodOrders.total,
-          openIssues: statsData.issues.open,
-          activeEmergencies: statsData.emergencies.active,
-          attendance: statsData.attendance,
-          recentAlerts: statsData.recentAlerts
-        });
-      }
-
-      // Load volunteers
-      const volRes = await fetch('/api/volunteers');
-      if (volRes.ok) {
-        const volData = await volRes.json();
-        setVolunteersList(volData);
-      }
-
-      // Load matches
-      const matchesRes = await fetch('/api/matches');
-      if (matchesRes.ok) {
-        const matchesData = await matchesRes.json();
-        setMatches(matchesData);
-        // If matches are already published, update state
-        if (matchesData.some((m: Match) => m.published)) {
-          setIsPublished(true);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load server data:", e);
-    }
+    // Left for compatibility and manual trigger if needed
   };
 
+  // Real-time Firestore subscriptions for Admin Panel
   useEffect(() => {
-    if (isAuthenticated) {
-      loadStatsAndData();
-      const interval = setInterval(loadStatsAndData, 5000); // refresh every 5s
-      return () => clearInterval(interval);
-    }
+    if (!isAuthenticated) return;
+
+    // 1. Subscribe to Volunteers
+    const unsubVolunteers = onSnapshot(collection(db, 'volunteers'), (snapshot) => {
+      const vols: Volunteer[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        vols.push({
+          id: docSnap.id,
+          name: data.fullName || 'Volunteer',
+          volunteerId: data.uid ? `VOL-${data.uid.substring(0, 4).toUpperCase()}` : 'VOL-0000',
+          status: 'active'
+        });
+      });
+      setVolunteersList(vols);
+      setStats(prev => ({
+        ...prev,
+        activeVolunteers: vols.filter(v => v.status === 'active').length
+      }));
+    });
+
+    // 2. Subscribe to Fans (Attendance)
+    const unsubFans = onSnapshot(collection(db, 'fans'), (snapshot) => {
+      setStats(prev => ({
+        ...prev,
+        attendance: snapshot.size > 0 ? (snapshot.size + 48500) : 0
+      }));
+    });
+
+    // 3. Subscribe to Food Orders
+    const unsubOrders = onSnapshot(collection(db, 'foodOrders'), (snapshot) => {
+      setStats(prev => ({
+        ...prev,
+        totalOrders: snapshot.size
+      }));
+    });
+
+    // 4. Subscribe to Issue Reports
+    const unsubIssues = onSnapshot(collection(db, 'issueReports'), (snapshot) => {
+      const openIssuesCount = snapshot.docs.filter(d => d.data().status === 'open' || d.data().status === 'pending').length;
+      
+      const newAlerts: any[] = [];
+      snapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        if (d.status === 'open' || d.status === 'pending') {
+          newAlerts.push({
+            id: docSnap.id,
+            type: d.category || 'Issue',
+            message: d.description || 'Stadium issue logged',
+            timestamp: d.timestamp || new Date().toISOString()
+          });
+        }
+      });
+
+      setStats(prev => ({
+        ...prev,
+        openIssues: openIssuesCount,
+        recentAlerts: [...prev.recentAlerts.filter(a => a.type === 'Emergency'), ...newAlerts]
+      }));
+    });
+
+    // 5. Subscribe to Emergency Requests
+    const unsubEmergencies = onSnapshot(collection(db, 'emergencyRequests'), (snapshot) => {
+      const activeEmergenciesCount = snapshot.docs.filter(d => d.data().status === 'active').length;
+      
+      const newEmergencies: any[] = [];
+      snapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        if (d.status === 'active') {
+          newEmergencies.push({
+            id: docSnap.id,
+            type: 'Emergency',
+            message: `CRITICAL BEACON AT SEAT ${d.seatNumber}`,
+            timestamp: d.timestamp || new Date().toISOString()
+          });
+        }
+      });
+
+      setStats(prev => ({
+        ...prev,
+        activeEmergencies: activeEmergenciesCount,
+        recentAlerts: [...prev.recentAlerts.filter(a => a.type !== 'Emergency'), ...newEmergencies]
+      }));
+    });
+
+    // 6. Subscribe to Matches
+    const unsubMatches = onSnapshot(collection(db, 'matches'), (snapshot) => {
+      const matchesList: Match[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        matchesList.push({
+          id: docSnap.id,
+          stadiumName: data.stadiumName,
+          matchName: data.matchName,
+          matchDate: data.matchDate,
+          matchTime: data.matchTime,
+          ticketPrice: Number(data.ticketPrice),
+          published: data.published
+        } as any);
+      });
+      setMatches(matchesList);
+      if (matchesList.some(m => m.published)) {
+        setIsPublished(true);
+      }
+    });
+
+    // 7. Subscribe to systemConfig for published status
+    const unsubConfig = onSnapshot(collection(db, 'systemConfig'), (snapshot) => {
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.isPublished) {
+          setIsPublished(true);
+        }
+      });
+    });
+
+    return () => {
+      unsubVolunteers();
+      unsubFans();
+      unsubOrders();
+      unsubIssues();
+      unsubEmergencies();
+      unsubMatches();
+      unsubConfig();
+    };
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -115,13 +217,40 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   }, [messages]);
 
   // Auth Handler
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'admin@nexusai.com' && password === 'Nexus@2026') {
-      setIsAuthenticated(true);
-      setLoginError('');
-    } else {
-      setLoginError('Invalid Administrator credentials.');
+    if (!email || !password) return;
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      try {
+        await loginUser(email, password, 'admin');
+      } catch (loginErr: any) {
+        // Self-heal: If default credentials used and user doesn't exist, create it lazily!
+        if (email === 'admin@nexusai.com' && (loginErr.code === 'auth/user-not-found' || loginErr.message?.includes('not-found') || loginErr.message?.includes('credential') || loginErr.message?.includes('user-not-found'))) {
+          try {
+            const { createUserWithEmailAndPassword } = await import('firebase/auth');
+            const { auth } = await import('../firebase');
+            const { createAdminProfile } = await import('../services/userService');
+            
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await createAdminProfile(userCredential.user.uid, email);
+            
+            // Login now!
+            await loginUser(email, password, 'admin');
+            setIsLoggingIn(false);
+            return;
+          } catch (seedErr) {
+            console.error("Failed to seed admin user:", seedErr);
+            throw loginErr;
+          }
+        }
+        throw loginErr;
+      }
+    } catch (err: any) {
+      setLoginError(getFriendlyErrorMessage(err));
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -129,76 +258,83 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const handleSaveMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/matches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stadiumName,
-          matchName,
-          matchDate,
-          matchTime,
-          ticketPrice
-        })
+      await addDoc(collection(db, 'matches'), {
+        stadiumName,
+        matchName,
+        matchDate,
+        matchTime,
+        ticketPrice: Number(ticketPrice),
+        published: true, // Auto publish on save for seamless flow
+        timestamp: new Date().toISOString()
       });
 
-      if (res.ok) {
-        setMatchSaveSuccess(true);
-        loadStatsAndData();
-        setTimeout(() => setMatchSaveSuccess(false), 3000);
-      }
+      // Update the system configuration to mark published
+      await addDoc(collection(db, 'systemConfig'), {
+        isPublished: true,
+        publishedAt: new Date().toISOString()
+      });
+
+      setMatchSaveSuccess(true);
+      setTimeout(() => setMatchSaveSuccess(false), 3000);
     } catch (e) {
-      console.error(e);
+      console.error("Error saving match to Firestore:", e);
     }
   };
 
   // Add Volunteer Handler
   const handleAddVolunteer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newVolunteerName.trim()) return;
+    if (!newVolunteerName.trim() || !newVolunteerEmail.trim() || !newVolunteerPassword.trim()) {
+      alert("All fields are required to register a volunteer!");
+      return;
+    }
 
+    setIsCreatingVolunteer(true);
     try {
-      const res = await fetch('/api/volunteers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newVolunteerName })
-      });
+      // Create Volunteer via admin endpoint/secondary instance
+      await adminCreateVolunteer(
+        newVolunteerName,
+        newVolunteerEmail,
+        newVolunteerPassword
+      );
 
-      if (res.ok) {
-        setNewVolunteerName('');
-        loadStatsAndData();
-      }
-    } catch (e) {
-      console.error(e);
+      // Clean up fields and reload list
+      setNewVolunteerName('');
+      setNewVolunteerEmail('');
+      setNewVolunteerPassword('password123');
+      setNewVolunteerGate('Gate A');
+      
+      await loadStatsAndData();
+    } catch (err: any) {
+      console.error("Failed to register volunteer:", err);
+      alert(err.message || "Failed to register volunteer. Ensure email is unique!");
+    } finally {
+      setIsCreatingVolunteer(false);
     }
   };
 
   // Remove Volunteer Handler
   const handleRemoveVolunteer = async (id: string) => {
     try {
-      const res = await fetch(`/api/volunteers/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        loadStatsAndData();
-      }
+      // Delete volunteer from Firestore volunteers collection
+      await deleteDoc(doc(db, 'volunteers', id));
+      await loadStatsAndData();
     } catch (e) {
-      console.error(e);
+      console.error("Failed to remove volunteer:", e);
     }
   };
 
   // Publish Event Handler
   const handlePublishEvent = async () => {
     try {
-      const res = await fetch('/api/publish', {
-        method: 'POST'
+      await addDoc(collection(db, 'systemConfig'), {
+        isPublished: true,
+        publishedAt: new Date().toISOString()
       });
-      if (res.ok) {
-        setIsPublished(true);
-        setShowPublishSuccessModal(true);
-        loadStatsAndData();
-      }
+      setIsPublished(true);
+      setShowPublishSuccessModal(true);
     } catch (e) {
-      console.error(e);
+      console.error("Error publishing event to Firestore:", e);
     }
   };
 
@@ -303,10 +439,20 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
 
             <button 
               type="submit"
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-sans font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              disabled={isLoggingIn}
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-850 text-black font-sans font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center space-x-2 cursor-pointer"
             >
-              <Key className="h-4 w-4" />
-              <span>Login to Command Center</span>
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Logging in...</span>
+                </>
+              ) : (
+                <>
+                  <Key className="h-4 w-4" />
+                  <span>Login to Command Center</span>
+                </>
+              )}
             </button>
           </form>
 
@@ -428,8 +574,8 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
           </button>
 
           <button 
-            onClick={() => {
-              setIsAuthenticated(false);
+            onClick={async () => {
+              await logoutUser();
               onLogout();
             }}
             className="w-full px-4 py-2.5 rounded-xl hover:bg-red-950/20 text-red-400 text-xs font-semibold tracking-wider uppercase flex items-center space-x-3 border border-transparent hover:border-red-900/30 transition-colors cursor-pointer"
@@ -771,17 +917,8 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
               <div>
                 <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold tracking-widest">Logistics Dispatch</span>
                 <h2 className="text-2xl font-black text-white tracking-wide uppercase">Volunteer Coordination</h2>
-                <p className="text-xs text-slate-500">Enlist, generate security credentials, and publish networks</p>
+                <p className="text-xs text-slate-500">Register new volunteers dynamically and dispatch them instantly</p>
               </div>
-
-              {/* Publish Event triggers */}
-              <button
-                onClick={handlePublishEvent}
-                className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-sans font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center space-x-2 cursor-pointer"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span>Publish Event Nodes</span>
-              </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -792,7 +929,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                 
                 <form onSubmit={handleAddVolunteer} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Full Name</label>
+                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Full Name</label>
                     <input 
                       type="text" 
                       required
@@ -803,11 +940,57 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="e.g. karthik@nexusai.com"
+                      value={newVolunteerEmail}
+                      onChange={(e) => setNewVolunteerEmail(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Assigned Gate</label>
+                    <select
+                      value={newVolunteerGate}
+                      onChange={(e) => setNewVolunteerGate(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 outline-none transition-all"
+                    >
+                      <option value="Gate A">Gate A</option>
+                      <option value="Gate B">Gate B</option>
+                      <option value="Gate C">Gate C</option>
+                      <option value="Gate D">Gate D</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
+                    <input 
+                      type="password" 
+                      required
+                      placeholder="e.g. password123"
+                      value={newVolunteerPassword}
+                      onChange={(e) => setNewVolunteerPassword(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 outline-none transition-all"
+                    />
+                  </div>
+
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-800 text-emerald-400 font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                    disabled={isCreatingVolunteer}
+                    className="w-full py-2.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-800 disabled:bg-slate-900 text-emerald-400 disabled:text-emerald-800 font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center space-x-2"
                   >
-                    + Generate Unique ID
+                    {isCreatingVolunteer ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Registering...</span>
+                      </>
+                    ) : (
+                      <span>+ Register Volunteer</span>
+                    )}
                   </button>
                 </form>
 

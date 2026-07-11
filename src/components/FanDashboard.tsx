@@ -3,9 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, UserPlus, LogIn, Coffee, ShieldAlert, AlertTriangle, 
   MapPin, Send, HelpCircle, LogOut, CheckCircle, Navigation, 
-  Flame, ShoppingCart, Minus, Plus, Compass, Sparkles
+  Flame, ShoppingCart, Minus, Plus, Compass, Sparkles, Loader2,
+  RefreshCw
 } from 'lucide-react';
 import StadiumSeatMap from './StadiumSeatMap';
+import { useAuth } from '../context/authContext';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface FanDashboardProps {
   onLogout: () => void;
@@ -13,14 +17,70 @@ interface FanDashboardProps {
 }
 
 export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps) {
-  // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, profile, role, signUpFan, loginUser, logoutUser, error, setError, loading } = useAuth();
+
+  // Authentication UI State
   const [isRegistering, setIsRegistering] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [seatNumber, setSeatNumber] = useState('A12-24'); // default seat from screenshot
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [seatNumber, setSeatNumber] = useState(''); // starts empty to force generator
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingSeat, setIsGeneratingSeat] = useState(false);
+
+  const isAuthenticated = !!user && role === 'fan';
+  const currentUser = user ? {
+    name: profile?.fullName || user.displayName || 'Demo Fan',
+    email: user.email,
+    seatNumber: profile?.seatNumber || seatNumber
+  } : null;
+
+  const generateUniqueSeatNumber = async (): Promise<string> => {
+    const letters = ['A', 'B', 'C', 'VIP'];
+    let attempts = 0;
+    while (attempts < 100) {
+      const letter = letters[Math.floor(Math.random() * letters.length)];
+      let numberPart = "";
+      if (letter === 'VIP') {
+        numberPart = String(Math.floor(Math.random() * 50) + 1).padStart(3, '0');
+      } else {
+        numberPart = String(Math.floor(Math.random() * 400) + 1).padStart(3, '0');
+      }
+      const seat = `${letter}-${numberPart}`;
+
+      try {
+        const q = query(collection(db, 'fans'), where('seatNumber', '==', seat));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+          return seat;
+        }
+      } catch (err) {
+        console.error("Firestore query failed, assuming unique:", err);
+        return seat;
+      }
+      attempts++;
+    }
+    return `A-${Math.floor(Math.random() * 400) + 100}`;
+  };
+
+  const handleRegenerateSeat = async () => {
+    setIsGeneratingSeat(true);
+    try {
+      const seat = await generateUniqueSeatNumber();
+      setSeatNumber(seat);
+      setEmergencySeat(seat); // synchronize emergency coordinate
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGeneratingSeat(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isRegistering && (!seatNumber || seatNumber === 'A12-24')) {
+      handleRegenerateSeat();
+    }
+  }, [isRegistering]);
 
   // Panel Tabs
   const [activeTab, setActiveTab] = useState<'dashboard' | 'food' | 'medical' | 'issue'>('dashboard');
@@ -81,33 +141,27 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   }, [chatLogs]);
 
   // Auth Handler
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isRegistering) {
-      if (!name || !email || !password || !seatNumber) return;
-      fetch('/api/fan/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            setCurrentUser({ name, email, seatNumber });
-            setIsAuthenticated(true);
-          }
-        })
-        .catch(err => console.error(err));
-    } else {
-      if (!email || !password) return;
-      // Login mockup using stored register values
-      setCurrentUser({ name: name || 'Demo Fan', email, seatNumber });
-      setIsAuthenticated(true);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (isRegistering) {
+        if (!name || !email || !password || !seatNumber) return;
+        await signUpFan(name, email, password, seatNumber);
+      } else {
+        if (!email || !password) return;
+        await loginUser(email, password, 'fan');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Food Ordering submit
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     const orderedItems = (Object.entries(cart) as [string, number][])
       .filter(([_, qty]) => Number(qty) > 0)
@@ -120,27 +174,41 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
     const totalPrice = orderedItems.reduce((acc, cur) => acc + (Number(cur.price) * Number(cur.quantity)), 0);
 
-    fetch('/api/fan/order-food', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      const orderDoc = await addDoc(collection(db, 'foodOrders'), {
         items: orderedItems,
         seatNumber: currentUser?.seatNumber || seatNumber,
-        totalPrice
-      })
-    })
-      .then(res => res.json())
-      .then(() => {
-        setCart({});
-        setOrderSuccess(true);
-        // Add chat feedback
-        setChatLogs(prev => [...prev, {
-          sender: 'ai',
-          text: `Order received! Your popcorn and drinks will be delivered shortly to Seat ${currentUser?.seatNumber || seatNumber}.`
-        }]);
-        setTimeout(() => setOrderSuccess(false), 4000);
-      })
-      .catch(err => console.error(err));
+        totalPrice,
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        fanUid: user?.uid || 'anonymous',
+        fanName: currentUser?.name || 'Anonymous Fan'
+      });
+
+      const taskDetails = `Deliver ${orderedItems.map((i: any) => `${i.name} (x${i.quantity})`).join(", ")}`;
+      await addDoc(collection(db, 'tasks'), {
+        type: 'Deliver Food',
+        details: taskDetails,
+        seatNumber: currentUser?.seatNumber || seatNumber,
+        priority: 'Medium',
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        linkedId: orderDoc.id,
+        fanUid: user?.uid || 'anonymous',
+        fanName: currentUser?.name || 'Anonymous Fan'
+      });
+
+      setCart({});
+      setOrderSuccess(true);
+      // Add chat feedback
+      setChatLogs(prev => [...prev, {
+        sender: 'ai',
+        text: `Order received! Your popcorn and drinks will be delivered shortly to Seat ${currentUser?.seatNumber || seatNumber}.`
+      }]);
+      setTimeout(() => setOrderSuccess(false), 4000);
+    } catch (err) {
+      console.error("Error creating food order in Firestore:", err);
+    }
   };
 
   const updateCartQty = (id: string, delta: number) => {
@@ -152,52 +220,80 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   };
 
   // Trigger Medical Emergency
-  const handleTriggerEmergency = (e: React.FormEvent) => {
+  const handleTriggerEmergency = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emergencySeat.trim()) return;
 
-    fetch('/api/fan/medical-emergency', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ seatNumber: emergencySeat })
-    })
-      .then(res => res.json())
-      .then(() => {
-        setEmergencySuccess(true);
-        setChatLogs(prev => [...prev, {
-          sender: 'ai',
-          text: "CRITICAL ALERT: Emergency beacon active. Stadium first-responders have been dispatched to your seat position. Please keep calm and remain seated."
-        }]);
-        setTimeout(() => setEmergencySuccess(false), 5000);
-      })
-      .catch(err => console.error(err));
+    try {
+      const emergencyDoc = await addDoc(collection(db, 'emergencyRequests'), {
+        seatNumber: emergencySeat,
+        status: 'active',
+        timestamp: new Date().toISOString(),
+        fanUid: user?.uid || 'anonymous',
+        fanName: currentUser?.name || 'Anonymous Fan'
+      });
+
+      await addDoc(collection(db, 'tasks'), {
+        type: 'Medical Emergency',
+        details: 'CRITICAL: First Responder assistance requested.',
+        seatNumber: emergencySeat,
+        priority: 'High',
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        linkedId: emergencyDoc.id,
+        fanUid: user?.uid || 'anonymous',
+        fanName: currentUser?.name || 'Anonymous Fan'
+      });
+
+      setEmergencySuccess(true);
+      setChatLogs(prev => [...prev, {
+        sender: 'ai',
+        text: "CRITICAL ALERT: Emergency beacon active. Stadium first-responders have been dispatched to your seat position. Please keep calm and remain seated."
+      }]);
+      setTimeout(() => setEmergencySuccess(false), 5000);
+    } catch (err) {
+      console.error("Error triggering emergency in Firestore:", err);
+    }
   };
 
   // Submit Issue Report
-  const handleSubmitIssue = (e: React.FormEvent) => {
+  const handleSubmitIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!issueDescription.trim()) return;
 
-    fetch('/api/fan/report-issue', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      const issueDoc = await addDoc(collection(db, 'issueReports'), {
         category: selectedIssueCategory,
         seatNumber: currentUser?.seatNumber || seatNumber,
-        description: issueDescription
-      })
-    })
-      .then(res => res.json())
-      .then(() => {
-        setIssueDescription('');
-        setIssueSuccess(true);
-        setChatLogs(prev => [...prev, {
-          sender: 'ai',
-          text: `Incident ticket registered. We've assigned a volunteer officer to inspect ${selectedIssueCategory} at ${currentUser?.seatNumber || seatNumber}.`
-        }]);
-        setTimeout(() => setIssueSuccess(false), 4000);
-      })
-      .catch(err => console.error(err));
+        description: issueDescription,
+        status: 'open',
+        timestamp: new Date().toISOString(),
+        fanUid: user?.uid || 'anonymous',
+        fanName: currentUser?.name || 'Anonymous Fan'
+      });
+
+      await addDoc(collection(db, 'tasks'), {
+        type: selectedIssueCategory === 'Broken Seat' ? 'Seat Issue' : 'Complaint Resolution',
+        details: `${selectedIssueCategory} - ${issueDescription}`,
+        seatNumber: currentUser?.seatNumber || seatNumber,
+        priority: selectedIssueCategory === 'Harassment' ? 'High' : 'Medium',
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        linkedId: issueDoc.id,
+        fanUid: user?.uid || 'anonymous',
+        fanName: currentUser?.name || 'Anonymous Fan'
+      });
+
+      setIssueDescription('');
+      setIssueSuccess(true);
+      setChatLogs(prev => [...prev, {
+        sender: 'ai',
+        text: `Incident ticket registered. We've assigned a volunteer officer to inspect ${selectedIssueCategory} at ${currentUser?.seatNumber || seatNumber}.`
+      }]);
+      setTimeout(() => setIssueSuccess(false), 4000);
+    } catch (err) {
+      console.error("Error creating issue report in Firestore:", err);
+    }
   };
 
   // Ask AI Assistant Chatbot
@@ -270,6 +366,12 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-950/30 border border-red-500/20 rounded-xl text-xs text-red-400 font-semibold text-center">
+                {error}
+              </div>
+            )}
+
             {isRegistering && (
               <div>
                 <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Full Name</label>
@@ -305,21 +407,42 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
             {isRegistering && (
               <div>
                 <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Your Seat Location</label>
-                <input 
-                  type="text" required
-                  value={seatNumber} onChange={(e) => setSeatNumber(e.target.value)}
-                  placeholder="e.g. A12-24"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white font-mono uppercase outline-none"
-                />
-                <span className="text-[9px] text-slate-500 mt-1 block">Used automatically as your default food delivery destination.</span>
+                <div className="relative flex items-center">
+                  <input 
+                    type="text" 
+                    readOnly
+                    required
+                    value={seatNumber}
+                    placeholder="Generating unique seat..."
+                    className="w-full px-3.5 py-2 pr-10 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono uppercase outline-none select-none"
+                  />
+                  <button
+                    type="button"
+                    disabled={isGeneratingSeat}
+                    onClick={handleRegenerateSeat}
+                    className="absolute right-2 p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 hover:text-emerald-300 disabled:opacity-50 cursor-pointer flex items-center justify-center transition-all"
+                    title="Generate unique seat"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isGeneratingSeat ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+                <span className="text-[9px] text-slate-500 mt-1 block">Your unique stadium seat number is automatically validated as available.</span>
               </div>
             )}
 
             <button 
               type="submit"
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-sans font-black text-xs uppercase tracking-widest shadow-md transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-800 disabled:text-slate-400 text-black font-sans font-black text-xs uppercase tracking-widest shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
             >
-              {isRegistering ? 'Register and Enter' : 'Enter Fan Pass'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <span>{isRegistering ? 'Register and Enter' : 'Enter Fan Pass'}</span>
+              )}
             </button>
           </form>
 
@@ -397,7 +520,10 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
         <div className="p-4 border-t border-slate-800/40">
           <button 
-            onClick={onLogout}
+            onClick={async () => {
+              await logoutUser();
+              onLogout();
+            }}
             className="w-full px-4 py-2.5 rounded-xl hover:bg-red-950/20 text-red-400 text-xs font-semibold tracking-wider uppercase flex items-center space-x-3 border border-transparent hover:border-red-900/30 transition-colors cursor-pointer"
           >
             <LogOut className="h-4 w-4" />

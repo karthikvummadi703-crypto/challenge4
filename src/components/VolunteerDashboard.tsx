@@ -2,25 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   UserCheck, ClipboardList, CheckCircle, Navigation, MessageSquare, 
-  Map, ShieldAlert, Sparkles, Coffee, LogOut, Send, RefreshCw, Star 
+  Map, ShieldAlert, Sparkles, Coffee, LogOut, Send, RefreshCw, Star, Loader2 
 } from 'lucide-react';
 import { Volunteer, Task } from '../types';
 import StadiumSeatMap from './StadiumSeatMap';
+import { useAuth } from '../context/authContext';
+import { getFriendlyErrorMessage } from '../services/authService';
+import { collection, getDocs, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface VolunteerDashboardProps {
   onLogout: () => void;
 }
 
 export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps) {
+  const { user, profile, role, loginUser, logoutUser, error, setError, loading } = useAuth();
+
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [name, setName] = useState('');
-  const [volunteerId, setVolunteerId] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
-  // Available demo accounts loaded from database
-  const [demoAccounts, setDemoAccounts] = useState<Volunteer[]>([]);
-  const [currentVolunteer, setCurrentVolunteer] = useState<Volunteer | null>(null);
+  // Available demo accounts loaded from Firestore volunteers collection
+  const [demoAccounts, setDemoAccounts] = useState<any[]>([]);
+
+  const currentVolunteer = user && role === 'volunteer' ? {
+    id: user.uid,
+    name: profile?.fullName || 'Volunteer',
+    volunteerId: user.uid ? `VOL-${user.uid.substring(0, 4).toUpperCase()}` : 'VOL-0000',
+    assignedGate: 'Gate A',
+    email: user.email,
+    status: 'active'
+  } : null;
+
+  const isAuthenticated = !!currentVolunteer;
 
   // Active Tasks State
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -35,124 +51,178 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
     { sender: 'ai', text: "Hello! I am Nexus AI. I'll route you through the optimal tunnels for your current tasks." }
   ]);
 
-  // Pre-load demo accounts and randomize login pre-fills on refresh
+  // Load live volunteer profiles from Firestore to serve as demo accounts
   useEffect(() => {
-    fetch('/api/volunteers')
-      .then(res => res.json())
-      .then((vols: Volunteer[]) => {
-        setDemoAccounts(vols);
-        if (vols.length > 0) {
-          // Whenever the page refreshes, automatically load another generated volunteer account
-          const randomIndex = Math.floor(Math.random() * vols.length);
-          const chosen = vols[randomIndex];
-          setName(chosen.name);
-          setVolunteerId(chosen.volunteerId);
-        }
-      })
-      .catch(err => console.error("Error loading volunteers:", err));
+    const fetchDemoVolunteers = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'volunteers'));
+        const volsList: any[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          volsList.push({
+            id: doc.id,
+            name: data.fullName || 'Volunteer',
+            volunteerId: data.uid ? `VOL-${data.uid.substring(0, 4).toUpperCase()}` : 'VOL-0000',
+            email: data.email
+          });
+        });
+        setDemoAccounts(volsList);
+      } catch (err) {
+        console.error("Error loading volunteers from Firestore:", err);
+      }
+    };
+    
+    fetchDemoVolunteers();
   }, []);
 
-  // Poll tasks once authenticated
-  const loadTasks = () => {
-    fetch('/api/tasks')
-      .then(res => res.json())
-      .then((data: Task[]) => {
-        setTasks(data);
-        
-        // Auto-highlight the seat of any task assigned to this volunteer that is 'accepted'
-        if (currentVolunteer) {
-          const activeTask = data.find(t => t.assignedTo === currentVolunteer.volunteerId && t.status === 'accepted');
-          if (activeTask) {
-            setHighlightedSeat(activeTask.seatNumber);
-          }
-        }
-      })
-      .catch(err => console.error("Error loading tasks:", err));
-  };
-
+  // Set up real-time listener for tasks
   useEffect(() => {
     if (isAuthenticated && currentVolunteer) {
-      loadTasks();
-      const interval = setInterval(loadTasks, 4000);
-      return () => clearInterval(interval);
+      const q = query(collection(db, 'tasks'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const dataList: Task[] = [];
+        snapshot.forEach((docSnap) => {
+          const t = docSnap.data();
+          dataList.push({
+            id: docSnap.id,
+            type: t.type,
+            details: t.details,
+            seatNumber: t.seatNumber,
+            priority: t.priority,
+            status: t.status,
+            assignedTo: t.assignedTo,
+            timestamp: t.timestamp,
+            linkedId: t.linkedId
+          } as any);
+        });
+
+        // Sort tasks by timestamp desc
+        dataList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setTasks(dataList);
+
+        // Auto-highlight seat of active task assigned to current volunteer
+        const activeTask = dataList.find(t => t.assignedTo === currentVolunteer.volunteerId && t.status === 'accepted');
+        if (activeTask) {
+          setHighlightedSeat(activeTask.seatNumber);
+        } else {
+          setHighlightedSeat(undefined);
+        }
+      }, (err) => {
+        console.error("Error subscribing to tasks in real-time:", err);
+      });
+
+      return () => unsubscribe();
     }
   }, [isAuthenticated, currentVolunteer]);
 
   // Login handler
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !volunteerId) return;
-
-    fetch('/api/volunteer/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, volunteerId })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error("Credentials invalid or match not published yet.");
-        return res.json();
-      })
-      .then(data => {
-        setCurrentVolunteer(data.volunteer);
-        setIsAuthenticated(true);
-        setLoginError('');
-      })
-      .catch(err => {
-        setLoginError(err.message || "Invalid name or unique ID. Check if event is published!");
-      });
+    if (!email || !password) return;
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      await loginUser(email, password, 'volunteer');
+    } catch (err: any) {
+      setLoginError(getFriendlyErrorMessage(err));
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   // Login with a specific chosen demo account
-  const handleQuickLogin = (acc: Volunteer) => {
-    setName(acc.name);
-    setVolunteerId(acc.volunteerId);
-    
-    fetch('/api/volunteer/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: acc.name, volunteerId: acc.volunteerId })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error("Match not published or invalid volunteer status.");
-        return res.json();
-      })
-      .then(data => {
-        setCurrentVolunteer(data.volunteer);
-        setIsAuthenticated(true);
-        setLoginError('');
-      })
-      .catch(err => {
-        setLoginError("This volunteer is pending. Organizers must click 'Publish Event' first!");
-      });
+  const handleQuickLogin = async (acc: any) => {
+    setEmail(acc.email);
+    setPassword('password123');
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      await loginUser(acc.email, 'password123', 'volunteer');
+    } catch (err: any) {
+      setLoginError("Could not log in. Ensure the password matches 'password123' or your custom password.");
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
+
   // Accept task handler
-  const handleAcceptTask = (taskId: string) => {
+  const handleAcceptTask = async (taskId: string) => {
     if (!currentVolunteer) return;
     
-    fetch(`/api/tasks/${taskId}/accept`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ volunteerId: currentVolunteer.volunteerId })
-    })
-      .then(res => res.json())
-      .then(() => {
-        loadTasks();
-      })
-      .catch(err => console.error(err));
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const taskRef = doc(db, 'tasks', taskId);
+      await updateDoc(taskRef, {
+        status: 'accepted',
+        assignedTo: currentVolunteer.volunteerId
+      });
+
+      // Update linked document status
+      const linkedId = (task as any).linkedId;
+      if (linkedId) {
+        if (task.type === 'Deliver Food') {
+          const orderRef = doc(db, 'foodOrders', linkedId);
+          await updateDoc(orderRef, {
+            status: 'preparing'
+          });
+        } else {
+          // It's a seat/complaint report, set assigned volunteer
+          const issueRef = doc(db, 'issueReports', linkedId);
+          await updateDoc(issueRef, {
+            assignedVolunteer: currentVolunteer.volunteerId
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error accepting task:", err);
+    }
   };
 
   // Complete task handler
-  const handleCompleteTask = (taskId: string) => {
-    fetch(`/api/tasks/${taskId}/complete`, {
-      method: 'POST'
-    })
-      .then(res => res.json())
-      .then(() => {
-        setHighlightedSeat(undefined);
-        loadTasks();
-      })
-      .catch(err => console.error(err));
+  const handleCompleteTask = async (taskId: string) => {
+    if (!currentVolunteer) return;
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const completionTime = new Date().toISOString();
+      const deliveryTimeMs = Date.now() - new Date(task.timestamp).getTime();
+
+      const taskRef = doc(db, 'tasks', taskId);
+      await updateDoc(taskRef, {
+        status: 'completed',
+        deliveryTimeMs,
+        completedAt: completionTime
+      });
+
+      // Update linked document status
+      const linkedId = (task as any).linkedId;
+      if (linkedId) {
+        if (task.type === 'Deliver Food') {
+          const orderRef = doc(db, 'foodOrders', linkedId);
+          await updateDoc(orderRef, {
+            status: 'delivered'
+          });
+        } else if (task.type === 'Medical Emergency') {
+          const emRef = doc(db, 'emergencyRequests', linkedId);
+          await updateDoc(emRef, {
+            status: 'resolved'
+          });
+        } else {
+          // Seating/Incidents
+          const issueRef = doc(db, 'issueReports', linkedId);
+          await updateDoc(issueRef, {
+            status: 'resolved'
+          });
+        }
+      }
+      setHighlightedSeat(undefined);
+    } catch (err) {
+      console.error("Error completing task:", err);
+    }
   };
 
   // Floating AI Chat Submission
@@ -203,26 +273,26 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">First Name</label>
+                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Email Address</label>
                 <input 
-                  type="text"
+                  type="email"
                   required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white outline-none transition-all"
-                  placeholder="Karthik"
+                  placeholder="volunteer@nexusai.com"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Volunteer ID</label>
+                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
                 <input 
-                  type="text"
+                  type="password"
                   required
-                  value={volunteerId}
-                  onChange={(e) => setVolunteerId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white font-mono outline-none transition-all"
-                  placeholder="VOL-4821"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white outline-none transition-all"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
@@ -233,9 +303,17 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
 
             <button 
               type="submit"
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-sans font-black text-xs uppercase tracking-widest shadow-md transition-all cursor-pointer"
+              disabled={isLoggingIn}
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-800 text-black font-sans font-black text-xs uppercase tracking-widest shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
             >
-              Log In to Device
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <span>Log In to Device</span>
+              )}
             </button>
           </form>
 
@@ -250,8 +328,8 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
 
             {demoAccounts.length === 0 ? (
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 text-center text-xs text-slate-500 space-y-1">
-                <p>No volunteer profiles synced on database.</p>
-                <p className="text-[10px] text-amber-500">Please go to "Organizer Dashboard" → "Volunteers" to register profiles & click "Publish Event".</p>
+                <p>No volunteer profiles registered yet.</p>
+                <p className="text-[10px] text-emerald-500">Go to "Organizer Dashboard" → "Volunteers" to register new volunteers dynamically.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -297,7 +375,10 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
         </div>
 
         <button 
-          onClick={onLogout}
+          onClick={async () => {
+            await logoutUser();
+            onLogout();
+          }}
           className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-red-950/20 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-red-400 border border-slate-850 hover:border-red-900/30 transition-all cursor-pointer"
         >
           Logout Device
