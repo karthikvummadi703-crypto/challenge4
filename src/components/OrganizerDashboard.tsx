@@ -12,6 +12,7 @@ import { adminCreateVolunteer } from '../services/userService';
 import { getFriendlyErrorMessage } from '../services/authService';
 import { collection, getDocs, deleteDoc, doc, onSnapshot, query, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { authedFetch } from '../services/apiClient';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
@@ -223,56 +224,12 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     setLoginError('');
     setIsLoggingIn(true);
     try {
-      try {
-        await loginUser(email, password, 'admin');
-      } catch (loginErr: any) {
-        const isAuthNotFound = loginErr.code === 'auth/user-not-found'
-          || loginErr.message?.includes('not-found')
-          || loginErr.message?.includes('user-not-found');
-        const isInvalidCredential = loginErr.code === 'auth/invalid-credential'
-          || loginErr.message?.includes('credential');
-        const isNoRoleDoc = loginErr.message?.includes('not configured in any role')
-          || loginErr.message?.includes('Access Denied');
-
-        // Case 1: admin@nexusai.com doesn't exist in Firebase Auth yet — create it lazily
-        if (email === 'admin@nexusai.com' && (isAuthNotFound || isInvalidCredential)) {
-          try {
-            const { createUserWithEmailAndPassword } = await import('firebase/auth');
-            const { auth } = await import('../firebase');
-            const { createAdminProfile } = await import('../services/userService');
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            await createAdminProfile(userCredential.user.uid, email);
-            await loginUser(email, password, 'admin');
-            setIsLoggingIn(false);
-            return;
-          } catch (seedErr) {
-            console.error("Failed to seed admin user:", seedErr);
-            throw loginErr;
-          }
-        }
-
-        // Case 2: Firebase Auth succeeded but no Firestore admin document exists for this user.
-        // This happens when an admin account was created directly in the Firebase console
-        // (Firebase Auth only) without a corresponding /admins/{uid} Firestore document.
-        // Fix: sign in again to get the UID, create the profile, then login normally.
-        if (isNoRoleDoc) {
-          try {
-            const { signInWithEmailAndPassword } = await import('firebase/auth');
-            const { auth } = await import('../firebase');
-            const { createAdminProfile } = await import('../services/userService');
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            await createAdminProfile(userCredential.user.uid, email);
-            await loginUser(email, password, 'admin');
-            setIsLoggingIn(false);
-            return;
-          } catch (profileErr) {
-            console.error("Failed to create admin profile:", profileErr);
-            throw loginErr;
-          }
-        }
-
-        throw loginErr;
-      }
+      // NOTE: there is intentionally no client-side admin auto-creation here.
+      // The single admin account is provisioned once via `scripts/seedAdmin.ts`
+      // (Firebase Admin SDK, run from a trusted shell) — see README.md. Letting
+      // the browser create /admins/{uid} documents would let any authenticated
+      // user grant themselves admin access.
+      await loginUser(email, password, 'admin');
     } catch (err: any) {
       setLoginError(getFriendlyErrorMessage(err));
     } finally {
@@ -375,7 +332,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     setIsSendingMsg(true);
 
     try {
-      const response = await fetch('/api/ai/command', {
+      const response = await authedFetch('/api/ai/command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: textToSend })
@@ -484,15 +441,6 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
               )}
             </button>
           </form>
-
-          {/* Preset credentials card */}
-          <div className="mt-8 pt-6 border-t border-slate-800/60 text-center">
-            <span className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider mb-2">Default Demo Credentials</span>
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] font-mono text-emerald-400 space-y-1">
-              <div>Email: <span className="text-white select-all">admin@nexusai.com</span></div>
-              <div>Password: <span className="text-white select-all">Nexus@2026</span></div>
-            </div>
-          </div>
         </motion.div>
       </div>
     );

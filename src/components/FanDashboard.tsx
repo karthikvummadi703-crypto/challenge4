@@ -10,6 +10,7 @@ import StadiumSeatMap from './StadiumSeatMap';
 import { useAuth } from '../context/authContext';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { authedFetch } from '../services/apiClient';
 
 interface FanDashboardProps {
   onLogout: () => void;
@@ -310,7 +311,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     setChatInput('');
     setIsAiAnswering(true);
 
-    fetch('/api/ai/command', {
+    authedFetch('/api/ai/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: textToSend })
@@ -331,7 +332,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   const triggerPresetQuery = (txt: string) => {
     setChatLogs(prev => [...prev, { sender: 'user', text: txt }]);
     setIsAiAnswering(true);
-    fetch('/api/ai/command', {
+    authedFetch('/api/ai/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: txt })

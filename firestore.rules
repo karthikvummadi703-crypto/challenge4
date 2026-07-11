@@ -25,18 +25,38 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // ── Role Profiles ─────────────────────────────────────────────────────────
-
-    // Admins can read/write their own profile; admins can also manage other admins
-    match /admins/{uid} {
-      allow read:  if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid) || isAdmin();
+    // Restricts a self-update to a fixed allow-list of non-privileged fields
+    // (e.g. lastLogin) so an owner can never modify their own role/existence
+    // via a client-side write — role documents may only be CREATED/DELETED
+    // by an admin (or, for the very first admin, by the Admin SDK seed script,
+    // which is not subject to these rules at all).
+    function onlyChangedFields(allowedFields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
     }
 
-    // Volunteers can read/write their own profile; admins can manage all volunteers
+    // ── Role Profiles ─────────────────────────────────────────────────────────
+
+    // SECURITY: role documents (admins/volunteers) must never be self-creatable —
+    // that is a privilege-escalation vector. Only an existing admin may create,
+    // update role fields, or delete another admin/volunteer document. The single
+    // admin account is seeded once via scripts/seedAdmin.ts (Firebase Admin SDK,
+    // which bypasses these rules entirely), never through client code.
+    match /admins/{uid} {
+      allow read:   if isOwner(uid) || isAdmin();
+      allow create: if isAdmin();
+      // An admin may update anything; the owner may only touch lastLogin.
+      allow update: if isAdmin() || (isOwner(uid) && onlyChangedFields(['lastLogin']));
+      allow delete: if isAdmin();
+    }
+
+    // Volunteers are always created by an admin (adminCreateVolunteer). A
+    // volunteer may only touch their own lastLogin field — role/active/gate
+    // assignment stays admin-controlled.
     match /volunteers/{uid} {
-      allow read:  if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid) || isAdmin();
+      allow read:   if isOwner(uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isOwner(uid) && onlyChangedFields(['lastLogin']));
+      allow delete: if isAdmin();
     }
 
     // Fans can read/write their own profile; admins can read all

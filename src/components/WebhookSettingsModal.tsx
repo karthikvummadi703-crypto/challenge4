@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Save, X, ToggleLeft, ToggleRight, Sparkles, AlertCircle } from 'lucide-react';
 import { SystemConfig } from '../types';
+import { authedFetch } from '../services/apiClient';
 
 interface WebhookSettingsModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
 
   useEffect(() => {
     if (isOpen) {
-      fetch('/api/config')
+      authedFetch('/api/config')
         .then((res) => res.json())
         .then((data) => {
           setN8nWebhookUrl(data.n8nWebhookUrl || '');
@@ -40,7 +41,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
     setErrorMessage('');
 
     try {
-      const response = await fetch('/api/config', {
+      const response = await authedFetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
