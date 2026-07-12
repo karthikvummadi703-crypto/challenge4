@@ -263,11 +263,14 @@ Current live telemetry:
 
 Answer the operator's question concisely (2-4 sentences), in character as a stadium operations assistant. Question: ${text}`;
 
+      // The SDK's `contents` field accepts a plain string at runtime but its TypeScript
+      // definition only allows ContentListUnion (an array of Content objects). We cast
+      // just that field rather than silencing the entire call with `as any`.
       const result = await genAI.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: stadiumContext,
+        contents: stadiumContext as Parameters<typeof genAI.models.generateContent>[0]['contents'],
         config: { abortSignal: AbortSignal.timeout(12_000) },
-      } as any);
+      });
 
       const aiResponse = result.text?.trim();
       if (aiResponse) {

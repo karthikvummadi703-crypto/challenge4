@@ -9,11 +9,13 @@ export interface Match {
   image?: string;
 }
 
+export type VolunteerStatus = 'active' | 'inactive';
+
 export interface Volunteer {
   id: string;
   name: string;
   volunteerId: string; // e.g. VOL-4821
-  status: 'active' | 'inactive';
+  status: VolunteerStatus;
 }
 
 export type TaskType = 'Deliver Food' | 'Medical Emergency' | 'Complaint Resolution' | 'Seat Issue' | 'Facility Issue';
@@ -40,19 +42,23 @@ export interface FoodItem {
   image?: string;
 }
 
+export type OrderStatus = 'pending' | 'preparing' | 'delivered';
+export type EmergencyStatus = 'active' | 'resolved';
+export type IssueStatus = 'open' | 'resolved';
+
 export interface FoodOrder {
   id: string;
   items: { name: string; quantity: number; price: number }[];
   seatNumber: string;
   totalPrice: number;
-  status: 'pending' | 'preparing' | 'delivered';
+  status: OrderStatus;
   timestamp: string;
 }
 
 export interface MedicalEmergency {
   id: string;
   seatNumber: string;
-  status: 'active' | 'resolved';
+  status: EmergencyStatus;
   timestamp: string;
 }
 
@@ -61,7 +67,7 @@ export interface IssueReport {
   category: 'Seat Occupancy' | 'Harassment' | 'Broken Seat' | 'Dirty Washroom' | 'Other';
   seatNumber: string;
   description: string;
-  status: 'open' | 'resolved';
+  status: IssueStatus;
   timestamp: string;
 }
 

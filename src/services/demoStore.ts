@@ -17,6 +17,8 @@
  *   demonstrates "real-time sync across roles" without a real backend.
  */
 
+import { TaskStatus, OrderStatus, EmergencyStatus, IssueStatus, VolunteerStatus } from '../types';
+
 export type DemoCollectionName =
   | 'volunteers'
   | 'fans'
@@ -85,20 +87,20 @@ function seedData(): Record<DemoCollectionName, DemoDoc[]> {
       { id: 'demo-fan-3', uid: 'demo-fan-3', fullName: 'Kwame Mensah', email: 'kwame.mensah@demo.nexusai.com', role: 'fan', seatNumber: 'VIP-012', assignedGate: 'Gate D', phone: '+233 555 0103', country: 'Ghana', preferredLanguage: 'English', favoriteTeam: 'Ghana', createdAt: iso(-20_000_000) },
     ],
     tasks: [
-      { id: 'demo-task-1', type: 'Deliver Food', details: 'Deliver 2x Chicken Burger, 1x Coke', seatNumber: 'A-118', priority: 'Medium', status: 'pending', assignedTo: 'VOL-DEMO1', timestamp: iso(-600_000) },
-      { id: 'demo-task-2', type: 'Seat Issue', details: 'Reported broken seat armrest', seatNumber: 'B-204', priority: 'Low', status: 'accepted', assignedTo: 'VOL-DEMO2', timestamp: iso(-1_200_000) },
-      { id: 'demo-task-3', type: 'Medical Emergency', details: 'Fan reporting dizziness, requesting medic', seatNumber: 'VIP-012', priority: 'High', status: 'pending', assignedTo: 'VOL-DEMO3', timestamp: iso(-300_000) },
+      { id: 'demo-task-1', type: 'Deliver Food', details: 'Deliver 2x Chicken Burger, 1x Coke', seatNumber: 'A-118', priority: 'Medium', status: 'pending' satisfies TaskStatus, assignedTo: 'VOL-DEMO1', timestamp: iso(-600_000) },
+      { id: 'demo-task-2', type: 'Seat Issue', details: 'Reported broken seat armrest', seatNumber: 'B-204', priority: 'Low', status: 'accepted' satisfies TaskStatus, assignedTo: 'VOL-DEMO2', timestamp: iso(-1_200_000) },
+      { id: 'demo-task-3', type: 'Medical Emergency', details: 'Fan reporting dizziness, requesting medic', seatNumber: 'VIP-012', priority: 'High', status: 'pending' satisfies TaskStatus, assignedTo: 'VOL-DEMO3', timestamp: iso(-300_000) },
     ],
     foodOrders: [
-      { id: 'demo-order-1', items: [{ name: 'Chicken Burger', quantity: 2, price: 7.99 }, { name: 'Coke', quantity: 1, price: 2.49 }], seatNumber: 'A-118', totalPrice: 18.47, status: 'pending', timestamp: iso(-600_000) },
-      { id: 'demo-order-2', items: [{ name: 'Veg Burger', quantity: 1, price: 6.99 }, { name: 'French Fries', quantity: 1, price: 3.49 }], seatNumber: 'B-204', totalPrice: 10.48, status: 'delivered', timestamp: iso(-3_600_000) },
+      { id: 'demo-order-1', items: [{ name: 'Chicken Burger', quantity: 2, price: 7.99 }, { name: 'Coke', quantity: 1, price: 2.49 }], seatNumber: 'A-118', totalPrice: 18.47, status: 'pending' satisfies OrderStatus, timestamp: iso(-600_000) },
+      { id: 'demo-order-2', items: [{ name: 'Veg Burger', quantity: 1, price: 6.99 }, { name: 'French Fries', quantity: 1, price: 3.49 }], seatNumber: 'B-204', totalPrice: 10.48, status: 'delivered' satisfies OrderStatus, timestamp: iso(-3_600_000) },
     ],
     emergencyRequests: [
-      { id: 'demo-emergency-1', seatNumber: 'VIP-012', status: 'active', timestamp: iso(-300_000) },
+      { id: 'demo-emergency-1', seatNumber: 'VIP-012', status: 'active' satisfies EmergencyStatus, timestamp: iso(-300_000) },
     ],
     issueReports: [
-      { id: 'demo-issue-1', category: 'Broken Seat', seatNumber: 'B-204', description: 'Armrest is loose and wobbling', status: 'open', timestamp: iso(-1_200_000) },
-      { id: 'demo-issue-2', category: 'Dirty Washroom', seatNumber: 'Gate C', description: 'Washroom near Gate C needs cleaning', status: 'resolved', timestamp: iso(-7_200_000) },
+      { id: 'demo-issue-1', category: 'Broken Seat', seatNumber: 'B-204', description: 'Armrest is loose and wobbling', status: 'open' satisfies IssueStatus, timestamp: iso(-1_200_000) },
+      { id: 'demo-issue-2', category: 'Dirty Washroom', seatNumber: 'Gate C', description: 'Washroom near Gate C needs cleaning', status: 'resolved' satisfies IssueStatus, timestamp: iso(-7_200_000) },
     ],
     matches: [
       { id: 'demo-match-1', stadiumName: 'Estádio do Nexus', matchName: 'Portugal vs Argentina', matchDate: '18/07/2026', matchTime: '19:30', ticketPrice: 120, published: true, timestamp: iso(-172_800_000) },
