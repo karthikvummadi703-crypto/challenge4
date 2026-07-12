@@ -80,6 +80,45 @@ describe('VolunteerAIChat', () => {
     vi.useRealTimers();
   });
 
+  it('returns food-stall reply when message contains "food"', async () => {
+    vi.useFakeTimers();
+    render(<VolunteerAIChat />);
+    fireEvent.click(screen.getByRole('button', { name: /open route guide assistant/i }));
+
+    fireEvent.change(screen.getByLabelText(/ask route guide/i), { target: { value: 'Where is the food?' } });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await act(async () => { vi.advanceTimersByTime(700); });
+    expect(screen.getByText(/main food stalls are in section b/i)).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('returns urgent medical reply when message contains "medical"', async () => {
+    vi.useFakeTimers();
+    render(<VolunteerAIChat />);
+    fireEvent.click(screen.getByRole('button', { name: /open route guide assistant/i }));
+
+    fireEvent.change(screen.getByLabelText(/ask route guide/i), { target: { value: 'Medical help needed' } });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await act(async () => { vi.advanceTimersByTime(700); });
+    expect(screen.getByText(/urgent: proceed with emergency kit/i)).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('returns fallback reply when message matches no keyword', async () => {
+    vi.useFakeTimers();
+    render(<VolunteerAIChat />);
+    fireEvent.click(screen.getByRole('button', { name: /open route guide assistant/i }));
+
+    fireEvent.change(screen.getByLabelText(/ask route guide/i), { target: { value: 'Hello there' } });
+    fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+
+    await act(async () => { vi.advanceTimersByTime(700); });
+    expect(screen.getByText(/charting a route/i)).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
   it('does not send an empty message (input required)', () => {
     render(<VolunteerAIChat />);
     fireEvent.click(screen.getByRole('button', { name: /open route guide assistant/i }));

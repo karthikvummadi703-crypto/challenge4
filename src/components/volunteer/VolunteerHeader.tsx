@@ -1,3 +1,9 @@
+/**
+ * Volunteer dashboard header bar.
+ *
+ * Displays the NEXUS AI brand, the active volunteer's name and ID badge,
+ * and a logout button. Purely presentational.
+ */
 import React from 'react';
 
 interface VolunteerHeaderProps {

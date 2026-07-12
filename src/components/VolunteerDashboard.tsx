@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Volunteer, Task, TaskStatus, OrderStatus, EmergencyStatus, IssueStatus } from '../types';
+import { Task, TaskStatus, OrderStatus, EmergencyStatus, IssueStatus } from '../types';
 import { useAuth } from '../context/authContext';
 import { getFriendlyErrorMessage } from '../services/authService';
 import { collection, getDocs } from 'firebase/firestore';
@@ -25,7 +25,7 @@ interface DemoVolunteerAccount {
 }
 
 export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps) {
-  const { user, profile, role, loginUser, logoutUser, error, setError, loading } = useAuth();
+  const { user, profile, role, loginUser, logoutUser, error: _error, setError: _setError, loading: _loading } = useAuth();
   const { isDemoMode, demoRole, demoProfile } = useDemoMode();
   const isVolunteerDemo = isDemoMode && demoRole === 'volunteer';
 
@@ -159,7 +159,6 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
     } catch (err) {
       console.error(errorLabel, err);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVolunteer, tasks]);
 
   const handleAcceptTask = (taskId: string) => runTaskAction(taskId, async (task) => {

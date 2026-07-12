@@ -1,3 +1,10 @@
+/**
+ * Fan dashboard sidebar navigation.
+ *
+ * Renders the user avatar initial, the three main tab buttons (Home, Food,
+ * Medical, Issue), and a logout button.  Marks the active tab with
+ * `aria-current="page"`. Purely presentational.
+ */
 import React from 'react';
 import { Compass, Coffee, ShieldAlert, AlertTriangle, LogOut } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';

@@ -1,3 +1,13 @@
+/**
+ * Volunteer task stack — the main work queue view.
+ *
+ * Split into two sections:
+ * - **My Active Task**: the task currently assigned to this volunteer (if any),
+ *   with a "Show on map" shortcut and a "Complete Assignment" button.
+ * - **Live Task Stack**: all other pending tasks the volunteer can accept,
+ *   with keyboard navigation (Enter / Space) and an "Accept" button that is
+ *   disabled when the volunteer already has an assigned task.
+ */
 import React from 'react';
 import { Navigation } from 'lucide-react';
 import { Task } from '../../types';

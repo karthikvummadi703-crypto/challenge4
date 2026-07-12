@@ -1,6 +1,17 @@
+/**
+ * Interactive SVG stadium seat map.
+ *
+ * Renders a bird's-eye view of the four stadium sections (A–D) with
+ * highlight support for a specific seat (`highlightedSeat`) and dynamic
+ * task-pin overlays for active tasks (`activeTasks`).  Sections can be
+ * hovered and optionally clicked (`onSeatSelect`).  An optional heat-map
+ * overlay (`showHeatmap`) tints sections by occupancy.
+ *
+ * Memoised with `React.memo` since it is re-rendered frequently by the
+ * volunteer dashboard as task state updates.
+ */
 import React, { useState, memo } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, ShieldAlert, Coffee, AlertTriangle } from 'lucide-react';
 
 interface SeatMapProps {
   highlightedSeat?: string;
@@ -176,8 +187,8 @@ function StadiumSeatMap({
             const coords = getTaskCoords(task.seatNumber);
             const isMedical = task.type === 'Medical Emergency';
             const isFood = task.type === 'Deliver Food';
-            const pinColor = isMedical ? 'text-red-500 fill-red-500' : isFood ? 'text-emerald-400 fill-emerald-400' : 'text-amber-500 fill-amber-500';
-            const bgGlow = isMedical ? 'rgba(239, 68, 68, 0.4)' : isFood ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)';
+            const _pinColor = isMedical ? 'text-red-500 fill-red-500' : isFood ? 'text-emerald-400 fill-emerald-400' : 'text-amber-500 fill-amber-500';
+            const _bgGlow = isMedical ? 'rgba(239, 68, 68, 0.4)' : isFood ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)';
 
             return (
               <g key={task.id} className="cursor-pointer">

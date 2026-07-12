@@ -1,3 +1,10 @@
+/**
+ * Fan dashboard issue-reporting tab.
+ *
+ * Lets fans select a predefined category (Seat Occupancy, Harassment, etc.)
+ * and add a free-text description before submitting. All state and handlers
+ * are lifted to `FanDashboard`.
+ */
 import React from 'react';
 
 const ISSUE_CATEGORIES = ['Seat Occupancy', 'Harassment', 'Broken Seat', 'Dirty Washroom', 'Other'] as const;

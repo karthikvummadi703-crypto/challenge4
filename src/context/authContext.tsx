@@ -1,3 +1,12 @@
+/**
+ * Firebase authentication context.
+ *
+ * Provides the `AuthContext` with the current Firebase `user`, their Firestore
+ * `role` (`'admin' | 'volunteer' | 'fan' | null`), an `isAdmin` flag, a
+ * `loading` state, and `signIn` / `signOut` helpers.  The context is wired up
+ * to `onAuthStateChanged` so all consumers re-render automatically when the
+ * session changes.  Also exports the `useAuth` convenience hook.
+ */
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import {
   onAuthStateChanged,

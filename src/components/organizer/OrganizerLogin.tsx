@@ -1,3 +1,11 @@
+/**
+ * Organizer (admin) login form.
+ *
+ * Rendered by `OrganizerDashboard` when no admin session is active.
+ * Purely presentational: email/password state and submit handler are
+ * threaded in as props.  Shows an error alert when `loginError` is set
+ * and disables the button with a "Logging in..." label while `isLoggingIn`.
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Key, Loader2 } from 'lucide-react';

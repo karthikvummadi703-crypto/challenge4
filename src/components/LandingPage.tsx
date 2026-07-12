@@ -1,6 +1,15 @@
+/**
+ * Application landing/home page.
+ *
+ * Entry point for all three user roles (Organizer, Volunteer, Fan) and the
+ * Demo Mode selector.  Renders role-selection cards, a demo-mode modal, and
+ * an animated background via the `Antigravity` 3-D particle component.
+ * All navigation is handled via `onSelectRole` and `onEnterDemo` callbacks
+ * provided by the root `App` component.
+ */
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserCheck, Shield, HelpCircle, ArrowRight, Play, FlaskConical, X } from 'lucide-react';
+import { Users, UserCheck, Shield, ArrowRight, Play, FlaskConical, X } from 'lucide-react';
 import Antigravity from './Antigravity';
 import { DemoRole } from '../context/demoModeContext';
 import { useModalA11y } from '../hooks/useModalA11y';

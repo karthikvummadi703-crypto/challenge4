@@ -108,6 +108,27 @@ describe('VolunteersPanel', () => {
     expect(setNewVolunteerName).toHaveBeenCalledWith('Alice');
   });
 
+  it('calls setNewVolunteerEmail when email input changes', () => {
+    const setNewVolunteerEmail = vi.fn();
+    render(<VolunteersPanel {...defaultProps} setNewVolunteerEmail={setNewVolunteerEmail} />);
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'vol@nexus.com' } });
+    expect(setNewVolunteerEmail).toHaveBeenCalledWith('vol@nexus.com');
+  });
+
+  it('calls setNewVolunteerGate when gate select changes', () => {
+    const setNewVolunteerGate = vi.fn();
+    render(<VolunteersPanel {...defaultProps} setNewVolunteerGate={setNewVolunteerGate} />);
+    fireEvent.change(screen.getByLabelText(/assigned gate/i), { target: { value: 'Gate C' } });
+    expect(setNewVolunteerGate).toHaveBeenCalledWith('Gate C');
+  });
+
+  it('calls setNewVolunteerPassword when password input changes', () => {
+    const setNewVolunteerPassword = vi.fn();
+    render(<VolunteersPanel {...defaultProps} setNewVolunteerPassword={setNewVolunteerPassword} />);
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secure123' } });
+    expect(setNewVolunteerPassword).toHaveBeenCalledWith('secure123');
+  });
+
   it('shows volunteer count in table header', () => {
     render(<VolunteersPanel {...defaultProps} volunteersList={sampleVolunteers} />);
     expect(screen.getByText(/2 volunteers cataloged/i)).toBeInTheDocument();

@@ -70,7 +70,7 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
     req.uid = decoded.uid;
     req.userEmail = decoded.email;
     next();
-  } catch (err) {
+  } catch {
     res.status(401).json({ error: 'Invalid or expired token.' });
   }
 }
@@ -82,7 +82,7 @@ export async function requireAdmin(req: AuthedRequest, res: Response, next: Next
     const snap = await getAdminDb().collection('admins').doc(req.uid).get();
     if (!snap.exists) return res.status(403).json({ error: 'Admin privileges required.' });
     next();
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Failed to verify admin privileges.' });
   }
 }
@@ -108,7 +108,7 @@ export async function requireAppCheck(req: Request, res: Response, next: NextFun
     if (!appCheckAdmin) throw new Error(initError || 'Firebase Admin SDK is not initialized.');
     await appCheckAdmin.verifyToken(token);
     next();
-  } catch (err) {
+  } catch {
     res.status(401).json({ error: 'Invalid or expired App Check token.' });
   }
 }

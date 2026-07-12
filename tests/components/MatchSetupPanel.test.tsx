@@ -99,6 +99,34 @@ describe('MatchSetupPanel', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
+  it('calls setMatchName when match name input changes', () => {
+    const setMatchName = vi.fn();
+    render(<MatchSetupPanel {...defaultProps} setMatchName={setMatchName} />);
+    fireEvent.change(screen.getByLabelText(/Match Name/i), { target: { value: 'Brazil vs France' } });
+    expect(setMatchName).toHaveBeenCalledWith('Brazil vs France');
+  });
+
+  it('calls setMatchDate when match date input changes', () => {
+    const setMatchDate = vi.fn();
+    render(<MatchSetupPanel {...defaultProps} setMatchDate={setMatchDate} />);
+    fireEvent.change(screen.getByLabelText(/Match Date/i), { target: { value: '20/07/2026' } });
+    expect(setMatchDate).toHaveBeenCalledWith('20/07/2026');
+  });
+
+  it('calls setMatchTime when match time input changes', () => {
+    const setMatchTime = vi.fn();
+    render(<MatchSetupPanel {...defaultProps} setMatchTime={setMatchTime} />);
+    fireEvent.change(screen.getByLabelText(/Match Time/i), { target: { value: '08:00 PM' } });
+    expect(setMatchTime).toHaveBeenCalledWith('08:00 PM');
+  });
+
+  it('calls setTicketPrice when ticket price input changes', () => {
+    const setTicketPrice = vi.fn();
+    render(<MatchSetupPanel {...defaultProps} setTicketPrice={setTicketPrice} />);
+    fireEvent.change(screen.getByLabelText(/Ticket Price/i), { target: { value: '250' } });
+    expect(setTicketPrice).toHaveBeenCalledWith('250');
+  });
+
   it('calls setStadiumName when stadium input changes', () => {
     const setStadiumName = vi.fn();
     render(<MatchSetupPanel {...defaultProps} setStadiumName={setStadiumName} />);

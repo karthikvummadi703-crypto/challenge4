@@ -17,7 +17,7 @@
  *   demonstrates "real-time sync across roles" without a real backend.
  */
 
-import { TaskStatus, OrderStatus, EmergencyStatus, IssueStatus, VolunteerStatus } from '../types';
+import { TaskStatus, OrderStatus, EmergencyStatus, IssueStatus } from '../types';
 
 export type DemoCollectionName =
   | 'volunteers'

@@ -110,4 +110,51 @@ describe('FanAuth', () => {
     render(<FanAuth {...baseProps} isRegistering={true} seatNumber="A-101" isGeneratingSeat={true} />);
     expect(screen.getByLabelText(/Generate new seat number/i)).toBeDisabled();
   });
+
+  it('calls setName when the full name input changes in registration mode', () => {
+    const setName = vi.fn();
+    render(<FanAuth {...baseProps} isRegistering={true} seatNumber="A-101" setName={setName} />);
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Lionel Messi' } });
+    expect(setName).toHaveBeenCalledWith('Lionel Messi');
+  });
+
+  it('calls setPhone when phone input changes in registration mode', () => {
+    const setPhone = vi.fn();
+    render(<FanAuth {...baseProps} isRegistering={true} seatNumber="A-101" setPhone={setPhone} />);
+    fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '+55 11 99999-0000' } });
+    expect(setPhone).toHaveBeenCalledWith('+55 11 99999-0000');
+  });
+
+  it('calls setCountry when country input changes in registration mode', () => {
+    const setCountry = vi.fn();
+    render(<FanAuth {...baseProps} isRegistering={true} seatNumber="A-101" setCountry={setCountry} />);
+    fireEvent.change(screen.getByLabelText(/Country/i), { target: { value: 'Brazil' } });
+    expect(setCountry).toHaveBeenCalledWith('Brazil');
+  });
+
+  it('calls setPreferredLanguage when language select changes in registration mode', () => {
+    const setPreferredLanguage = vi.fn();
+    render(<FanAuth {...baseProps} isRegistering={true} seatNumber="A-101" setPreferredLanguage={setPreferredLanguage} />);
+    fireEvent.change(screen.getByLabelText(/Language/i), { target: { value: 'Spanish' } });
+    expect(setPreferredLanguage).toHaveBeenCalledWith('Spanish');
+  });
+
+  it('calls setFavoriteTeam when favorite team input changes in registration mode', () => {
+    const setFavoriteTeam = vi.fn();
+    render(<FanAuth {...baseProps} isRegistering={true} seatNumber="A-101" setFavoriteTeam={setFavoriteTeam} />);
+    fireEvent.change(screen.getByLabelText(/Favorite Team/i), { target: { value: 'Brazil' } });
+    expect(setFavoriteTeam).toHaveBeenCalledWith('Brazil');
+  });
+
+  it('shows "Already registered? Login instead" toggle link in registration mode', () => {
+    render(<FanAuth {...baseProps} isRegistering={true} seatNumber="A-101" />);
+    expect(screen.getByText(/Already registered\? Login instead/i)).toBeInTheDocument();
+  });
+
+  it('calls setPassword when password input changes', () => {
+    const setPassword = vi.fn();
+    render(<FanAuth {...baseProps} setPassword={setPassword} />);
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'newpass99' } });
+    expect(setPassword).toHaveBeenCalledWith('newpass99');
+  });
 });

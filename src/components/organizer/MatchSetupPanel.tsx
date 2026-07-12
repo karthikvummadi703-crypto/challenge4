@@ -1,3 +1,11 @@
+/**
+ * Organizer dashboard match-setup panel.
+ *
+ * Provides a form for creating/updating match details (stadium name, match
+ * name, date, time, ticket price) and a read-only live match board on the
+ * right showing all configured matches with their published/draft status.
+ * All state is lifted to `OrganizerDashboard`.
+ */
 import React from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Match } from '../../types';

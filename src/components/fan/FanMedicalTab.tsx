@@ -1,3 +1,11 @@
+/**
+ * Fan dashboard medical-emergency tab.
+ *
+ * Allows a fan to report a medical emergency by specifying a seat number.
+ * On submission a `MedicalEmergency` record and a linked `tasks` record are
+ * created via `createRecordWithTask`. Purely presentational — state is owned
+ * by `FanDashboard`.
+ */
 import React from 'react';
 import { ShieldAlert } from 'lucide-react';
 

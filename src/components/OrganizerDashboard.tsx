@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Match, Volunteer, Task, SystemConfig, StadiumAlert, VolunteerStatus } from '../types';
+import { Match, Volunteer, StadiumAlert, VolunteerStatus } from '../types';
 import { useAuth } from '../context/authContext';
 import { adminCreateVolunteer, verifyAdminAccess } from '../services/userService';
 import { getFriendlyErrorMessage } from '../services/authService';
@@ -33,7 +33,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 ];
 
 export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept, onOpenSettings }: OrganizerDashboardProps) {
-  const { user, role, loginUser, logoutUser, error, setError, loading } = useAuth();
+  const { user, role, loginUser, logoutUser, error: _error, setError: _setError, loading: _loading } = useAuth();
   const { isDemoMode, demoRole } = useDemoMode();
   const isOrganizerDemo = isDemoMode && demoRole === 'organizer';
 

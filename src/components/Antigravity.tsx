@@ -1,3 +1,12 @@
+/**
+ * Animated 3-D particle field background used in the splash screen and landing page.
+ *
+ * Renders a `@react-three/fiber` Canvas with a point cloud whose particles
+ * drift and pulse over time creating the "anti-gravity" depth effect.
+ * Accepts `particleCount`, `speed`, and `color` props so callers can tune
+ * density and appearance.  The canvas is positioned `fixed` and sits behind
+ * all other content.
+ */
 import React, { useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -47,7 +56,7 @@ const AntigravityInner: React.FC<AntigravityProps> = ({
   waveAmplitude = 1,
   particleSize = 2,
   lerpSpeed = 0.1,
-  color = '#FF9FFC',
+  color: _color = '#FF9FFC',
   autoAnimate = false,
   particleVariance = 1,
   rotationSpeed = 0,

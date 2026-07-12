@@ -1,3 +1,12 @@
+/**
+ * Floating AI chat assistant for the volunteer dashboard.
+ *
+ * Renders a collapsed toggle button in the bottom-right corner.  When opened,
+ * shows a chat panel with shortcut buttons and a text input.  Replies are
+ * generated locally by `getLocalReply` — no backend call is made — so the
+ * assistant works even without network access.  Keyword routing covers route
+ * guidance, food pickups, and medical emergencies.
+ */
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Send } from 'lucide-react';

@@ -28,7 +28,6 @@ import {
   deleteDemoDoc,
   resetDemoStore,
   clearDemoStore,
-  type DemoCollectionName,
 } from '../src/services/demoStore';
 
 // ─────────────────────────────────────────────────────────────────────────────

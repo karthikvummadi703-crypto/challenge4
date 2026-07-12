@@ -9,7 +9,7 @@ export default defineConfig({
     // Component tests in tests/components/ override this with
     // `// @vitest-environment jsdom` at the top of each file.
     environment: 'node',
-    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
+    include: ['*.test.ts', '*.test.tsx', 'tests/**/*.test.ts', 'tests/**/*.test.tsx'],
     // firestoreRules.test.ts needs a live Firestore emulator (see `npm run
     // test:rules`, which boots one via `firebase emulators:exec`) — excluded
     // from the default `npm test` run so it doesn't fail without one.

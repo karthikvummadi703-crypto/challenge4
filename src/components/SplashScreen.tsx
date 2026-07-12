@@ -1,3 +1,12 @@
+/**
+ * Application splash / loading screen shown on first load.
+ *
+ * Steps through a sequence of loading messages with a progress bar animation.
+ * When `prefers-reduced-motion` is set, `onComplete` is called immediately
+ * to skip all animation.  A "Skip" button is always available.  Uses
+ * `role="status"` on the root element and `role="progressbar"` with
+ * `aria-valuenow` / `aria-valuemax` for screen-reader accessibility.
+ */
 import React, { useState, useEffect } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Activity } from 'lucide-react';

@@ -1,3 +1,10 @@
+/**
+ * Organizer dashboard sidebar navigation.
+ *
+ * Renders the NEXUS AI brand, three nav tabs (Overview, Setup, Volunteers),
+ * an n8n Settings button, and a Logout button. Marks the active tab with
+ * `aria-current="page"`. Purely presentational.
+ */
 import React from 'react';
 import type { LucideProps } from 'lucide-react';
 import { LayoutDashboard, PlusCircle, Users, Settings, LogOut } from 'lucide-react';

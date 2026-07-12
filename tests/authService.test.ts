@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock Firebase Auth so the module can be imported without real credentials.
 vi.mock('firebase/auth', () => ({

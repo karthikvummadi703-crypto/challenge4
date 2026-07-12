@@ -1,3 +1,13 @@
+/**
+ * React route-guard components used to protect dashboard pages.
+ *
+ * Each guard reads the current auth state from `AuthContext` and either
+ * renders its `children` (when access is granted) or a role-appropriate
+ * error screen / custom `fallback` element.  All guards show a spinner
+ * while the auth state is still loading.
+ *
+ * Available guards: `RequireAuth`, `RequireAdmin`, `RequireVolunteer`, `RequireFan`.
+ */
 import React, { ReactNode } from 'react';
 import { useAuth } from '../context/authContext';
 import { ShieldAlert, Loader2 } from 'lucide-react';

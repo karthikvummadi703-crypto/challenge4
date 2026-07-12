@@ -1,3 +1,11 @@
+/**
+ * Volunteer login screen.
+ *
+ * Shows email/password fields and, when demo accounts are provided, a row of
+ * quick-login buttons.  Displays a login error alert and a "Signing In…"
+ * disabled state while submitting.  Purely presentational — all state is
+ * lifted to `VolunteerDashboard`.
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { UserCheck, Loader2 } from 'lucide-react';

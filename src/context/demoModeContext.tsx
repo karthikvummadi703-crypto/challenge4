@@ -1,3 +1,12 @@
+/**
+ * Demo-mode context — controls the read-only in-browser demo session.
+ *
+ * When demo mode is active the app swaps all Firestore reads/writes for an
+ * in-memory store (`demoStore`) seeded with realistic fixture data, so the app
+ * can be explored without a Firebase account.  Provides `isDemoMode`,
+ * `demoRole`, `enterDemo`, and `exitDemo` to all consumers.  Also exports the
+ * `DemoRole` type and `useDemoMode` convenience hook.
+ */
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './authContext';
 import { setDemoModeActive } from '../services/dataSource';

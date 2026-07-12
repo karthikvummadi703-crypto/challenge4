@@ -1,3 +1,11 @@
+/**
+ * Organizer dashboard volunteers panel.
+ *
+ * Left column: a form for adding new volunteers (name, email, gate, password).
+ * Right column: a table listing all registered volunteers with their IDs,
+ * status badges, and delete buttons. Also contains the "Publish Event" button.
+ * All state is managed by `OrganizerDashboard`.
+ */
 import React from 'react';
 import { Trash2, Loader2, Rocket } from 'lucide-react';
 import { Volunteer } from '../../types';

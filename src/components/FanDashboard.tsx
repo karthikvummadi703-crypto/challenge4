@@ -109,7 +109,6 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
       setIsGeneratingSeat(false);
     }
   // generateUniqueSeatNumber is a module-level pure function — no deps needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

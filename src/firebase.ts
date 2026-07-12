@@ -1,3 +1,10 @@
+/**
+ * Firebase client-side SDK initialization.
+ *
+ * Exports `auth`, `db`, and (when a reCAPTCHA site key is configured)
+ * `appCheck` for use across the React app. Configuration is read from
+ * Vite environment variables (VITE_FIREBASE_*) so no secrets live in source.
+ */
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';

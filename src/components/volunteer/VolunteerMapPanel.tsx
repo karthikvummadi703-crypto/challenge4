@@ -1,3 +1,11 @@
+/**
+ * Volunteer dashboard map panel.
+ *
+ * Renders the stadium seat map (`StadiumSeatMap`) alongside a navigation
+ * guide and, when `highlightedSeat` is set, a destination badge showing
+ * the target seat. Active tasks are passed through to the seat map so task
+ * pins are rendered on the map. Purely presentational.
+ */
 import React from 'react';
 import { Navigation } from 'lucide-react';
 import { Task } from '../../types';

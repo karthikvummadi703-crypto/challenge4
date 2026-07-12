@@ -1,3 +1,11 @@
+/**
+ * Fan authentication screen — handles both login and registration flows.
+ *
+ * Purely presentational: all state is lifted to `FanDashboard` and threaded
+ * in via props.  Registration mode shows extra fields (name, phone, country,
+ * preferred language, favourite team) plus an auto-generated seat number with
+ * a regenerate button.  Wraps the form card in a `framer-motion` animation.
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Users, Loader2, RefreshCw } from 'lucide-react';

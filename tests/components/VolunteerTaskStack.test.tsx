@@ -82,6 +82,40 @@ describe('VolunteerTaskStack', () => {
     expect(screen.getByRole('button', { name: /accept/i })).toBeDisabled();
   });
 
+  it('calls onHighlightSeat when Enter key is pressed on a pending task card', () => {
+    const onHighlightSeat = vi.fn();
+    const pending = makeTask({ id: 'task-kd-enter', seatNumber: 'D05-02', details: 'Seat Issue' });
+    render(<VolunteerTaskStack {...defaultProps} otherTasks={[pending]} onHighlightSeat={onHighlightSeat} />);
+    const card = screen.getByRole('button', { name: /highlight seat d05-02/i });
+    fireEvent.keyDown(card, { key: 'Enter' });
+    expect(onHighlightSeat).toHaveBeenCalledWith('D05-02');
+  });
+
+  it('calls onHighlightSeat when Space key is pressed on a pending task card', () => {
+    const onHighlightSeat = vi.fn();
+    const pending = makeTask({ id: 'task-kd-space', seatNumber: 'B08-11', details: 'Food delivery' });
+    render(<VolunteerTaskStack {...defaultProps} otherTasks={[pending]} onHighlightSeat={onHighlightSeat} />);
+    const card = screen.getByRole('button', { name: /highlight seat b08-11/i });
+    fireEvent.keyDown(card, { key: ' ' });
+    expect(onHighlightSeat).toHaveBeenCalledWith('B08-11');
+  });
+
+  it('does not call onHighlightSeat for an unrelated key press', () => {
+    const onHighlightSeat = vi.fn();
+    const pending = makeTask({ id: 'task-kd-tab', seatNumber: 'C02-03', details: 'Complaint' });
+    render(<VolunteerTaskStack {...defaultProps} otherTasks={[pending]} onHighlightSeat={onHighlightSeat} />);
+    const card = screen.getByRole('button', { name: /highlight seat c02-03/i });
+    fireEvent.keyDown(card, { key: 'Tab' });
+    expect(onHighlightSeat).not.toHaveBeenCalled();
+  });
+
+  it('renders a Medical Emergency task with a red indicator dot', () => {
+    const pending = makeTask({ id: 'med-1', type: 'Medical Emergency', details: 'Fan collapsed', seatNumber: 'A01-01', priority: 'High' });
+    render(<VolunteerTaskStack {...defaultProps} otherTasks={[pending]} />);
+    expect(screen.getByText('Medical Emergency')).toBeInTheDocument();
+    expect(screen.getByText('Fan collapsed')).toBeInTheDocument();
+  });
+
   it('shows Show on map button on assigned task that calls onHighlightSeat', () => {
     const onHighlightSeat = vi.fn();
     const assigned = makeTask({ id: 'a1', status: 'accepted', seatNumber: 'C10-05', details: 'Urgent delivery' });

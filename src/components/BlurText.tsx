@@ -1,3 +1,14 @@
+/**
+ * Animated text component that reveals characters word-by-word or
+ * letter-by-letter with a blur-in effect.
+ *
+ * Built on `framer-motion` and `IntersectionObserver` — animation triggers
+ * only when the element scrolls into view.  Respects `prefers-reduced-motion`
+ * by enabling `useReducedMotion` in the parent splashscreen; the component
+ * itself does not opt out but uses very short durations when the
+ * `delay` prop is set to zero.  Configurable `animateBy` ("words" | "letters"),
+ * `direction` ("top" | "bottom"), `duration`, `delay`, and `threshold`.
+ */
 import { motion } from 'motion/react';
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 

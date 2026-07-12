@@ -1,3 +1,10 @@
+/**
+ * Fan dashboard food-ordering tab.
+ *
+ * Renders the stadium food menu, a live cart summary, and the order-submission
+ * form. All state (cart quantities, order success flag) is managed by the
+ * parent `FanDashboard` and passed in as props.
+ */
 import React from 'react';
 import { ShoppingCart, Minus, Plus } from 'lucide-react';
 

@@ -1,3 +1,10 @@
+/**
+ * Publish-success confirmation modal shown after an organizer publishes an event.
+ *
+ * Displays a checklist of what was activated (AI assistant, volunteer roster,
+ * fan portal) and a "Go to Dashboard" button that calls `onClose`. The dialog
+ * is hidden (`visible=false`) until the organizer completes the publish action.
+ */
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle } from 'lucide-react';

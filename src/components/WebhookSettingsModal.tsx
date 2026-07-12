@@ -1,3 +1,11 @@
+/**
+ * n8n webhook settings modal (organizer only).
+ *
+ * Lets an organizer configure the optional n8n webhook URL and toggle the
+ * mock-AI mode flag.  Settings are persisted server-side via `POST /api/config`
+ * (requires admin auth).  On success, closes itself after a 1.5 s delay so
+ * the confirmation message is visible.
+ */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Save, X, ToggleLeft, ToggleRight, Sparkles, AlertCircle } from 'lucide-react';
@@ -64,7 +72,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
         onClose();
         setSuccessMessage('');
       }, 1500);
-    } catch (err) {
+    } catch {
       setErrorMessage("Error saving configuration to server.");
     } finally {
       setIsLoading(false);

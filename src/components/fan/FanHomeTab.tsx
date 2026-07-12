@@ -1,3 +1,9 @@
+/**
+ * Fan dashboard home tab — welcome screen shown after login.
+ *
+ * Displays the fan's seat location, live stadium attendance stat, and
+ * contextual stadium tip cards.  Purely presentational.
+ */
 import React from 'react';
 import { Coffee, ShieldAlert, AlertTriangle } from 'lucide-react';
 import StadiumSeatMap from '../StadiumSeatMap';

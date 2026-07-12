@@ -25,6 +25,7 @@ vi.stubGlobal(
   class extends MockBroadcastChannel {
     constructor() {
       super();
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       lastChannelInstance = this;
     }
   }
