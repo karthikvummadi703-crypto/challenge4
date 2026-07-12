@@ -14,3 +14,6 @@ On import, `.replit` userenv had all `VITE_FIREBASE_*` vars except `VITE_FIREBAS
 
 ## AI chat fallback chain
 `/api/ai/command` tries n8n webhook (if `N8N_AI_ASSISTANT_URL`/config is set) → Gemini (`@google/genai`, `GEMINI_API_KEY`) → local rule-based canned responses, in that order. `@google/genai` v2 usage: `new GoogleGenAI({apiKey})` then `ai.models.generateContent({model: 'gemini-2.5-flash', contents: string})`, response text via `result.text`. A transient Gemini 503 ("high demand") is normal and falls through gracefully — not a bug.
+
+## Auth failures across ALL logins (admin/volunteer/fan)
+`requireAuth` in `lib/firebaseAdmin.ts` (used by `/api/ai/command` and other authenticated routes) verifies ID tokens via the Firebase Admin SDK, which only initializes when `FIREBASE_SERVICE_ACCOUNT_KEY` is set. Without it, every authenticated endpoint 401s for every role — not just admin-gated ones. Symptom reported by users: "AI chat / API doesn't work for any login type." Fix: request the `FIREBASE_SERVICE_ACCOUNT_KEY` secret (Firebase Console → Project Settings → Service Accounts → Generate new private key, paste full JSON as the secret value).
