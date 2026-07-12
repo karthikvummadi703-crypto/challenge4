@@ -359,10 +359,10 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
           <div className="absolute inset-0 bg-slate-950/80" />
         </div>
 
-        <motion.div 
+      <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="relative z-10 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(16,185,129,0.06)]"
+          className="gpu-blur-foreground relative z-10 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(16,185,129,0.06)]"
         >
           <div className="text-center space-y-2 mb-6">
             <div className="h-12 w-12 rounded-xl bg-emerald-500 text-black flex items-center justify-center mx-auto shadow-md">
