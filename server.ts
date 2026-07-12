@@ -347,10 +347,37 @@ async function startServer() {
   });
 }
 
+// ── Boot-time admin integrity guard ──────────────────────────────────────────
+// The entire admin security model assumes exactly one document in the
+// `admins` collection (see scripts/seedAdmin.ts / scripts/verifyAdminIntegrity.ts).
+// That invariant can only be broken by someone editing Firestore directly
+// (the console bypasses firestore.rules), so the app itself would otherwise
+// never notice. This check runs once at startup and logs loudly — it never
+// blocks boot or touches request handling — so a stray console edit shows up
+// in the server logs immediately instead of silently granting access.
+async function checkAdminIntegrityOnBoot() {
+  if (!isAdminSdkConfigured()) return; // no service account key in this env — nothing to check
+  try {
+    const snap = await getAdminDb().collection('admins').get();
+    if (snap.size === 1) {
+      console.log(`[Nexus Server] Admin integrity check: OK (1 admin doc, uid=${snap.docs[0].id}).`);
+    } else {
+      console.error(
+        `[Nexus Server] ⚠ ADMIN INTEGRITY WARNING: expected exactly 1 document in ` +
+        `'admins', found ${snap.size}. Someone may have edited Firestore directly. ` +
+        `Run "npm run verify:admin" for details and remove any stray documents.`
+      );
+    }
+  } catch (err) {
+    console.warn('[Nexus Server] Admin integrity check failed to run:', err);
+  }
+}
+
 // Exported so tests/server.test.ts can exercise the REAL app with supertest
 // instead of a disconnected reimplementation. Only auto-start the HTTP
 // listener (and Vite dev middleware) outside of the Vitest test runner.
 export { app };
 if (!process.env.VITEST) {
   startServer();
+  checkAdminIntegrityOnBoot();
 }

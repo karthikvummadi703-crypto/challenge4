@@ -32,11 +32,11 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
   configured in Organizer → Integration Center), then Gemini
   (`@google/genai`, `GEMINI_API_KEY`) for real generative answers, then a
   local rule-based engine as final fallback.
-- `server.ts` also still serves a few in-memory REST endpoints
-  (`/api/matches`, `/api/volunteers`, `/api/organizer/stats`, `/api/config`)
-  that are legacy from before the Firestore migration; several dashboards
-  already read/write Firestore directly instead. See proposed follow-up task
-  for consolidating this.
+- `server.ts` only exposes `/api/config` (admin-only n8n settings) and the two
+  AI chat routes — the old in-memory `/api/matches`, `/api/volunteers`,
+  `/api/organizer/stats` endpoints from before the Firestore migration have
+  already been removed; all dashboards read/write Firestore directly via
+  `dataSource.ts`.
 
 ## Admin security model
 - Role is determined purely by Firestore document existence
@@ -115,6 +115,11 @@ access to whichever account's UID it was keyed to:
 Remediation: deleted the 2 stray documents via the Admin SDK, normalized the
 remaining doc's field names to lowercase (`email`, not `Email`), and
 re-ran `npm run verify:admin`, which now reports exactly 1 admin document.
-No application code changed — the bug was bad Firestore data, not faulty
-logic. A follow-up task was filed to add an automated/recurring
-`verify:admin` check so a stray console edit is caught quickly next time.
+No application code changed for the original fix — the bug was bad Firestore
+data, not faulty logic.
+
+To make this recur loudly instead of silently, `server.ts` now runs the same
+one-admin-doc check on every server boot (`checkAdminIntegrityOnBoot`) and
+logs a clear `⚠ ADMIN INTEGRITY WARNING` if the live count is ever anything
+but 1, pointing at `npm run verify:admin` for details. It never blocks
+startup or touches request handling — pure observability.
