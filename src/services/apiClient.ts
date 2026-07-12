@@ -1,13 +1,16 @@
-import { auth } from '../firebase';
+import { getToken } from 'firebase/app-check';
+import { auth, appCheck } from '../firebase';
 import { isDemoModeActive } from './dataSource';
 import { getDemoDocs } from './demoStore';
 
 /**
  * fetch() wrapper that attaches the current Firebase user's ID token as a
- * Bearer Authorization header. The server verifies this token (see
- * lib/firebaseAdmin.ts requireAuth/requireAdmin) before serving
- * /api/config or /api/ai/command — without it those endpoints reject the
- * request with 401.
+ * Bearer Authorization header, plus an App Check token when App Check is
+ * configured (see src/firebase.ts). The server verifies these (see
+ * lib/firebaseAdmin.ts requireAuth/requireAdmin/requireAppCheck) before
+ * serving /api/config or /api/ai/command — without a valid Authorization
+ * header those endpoints reject the request with 401; App Check is only
+ * enforced server-side when explicitly turned on (see README.md).
  */
 export async function authedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const user = auth.currentUser;
@@ -15,6 +18,16 @@ export async function authedFetch(url: string, options: RequestInit = {}): Promi
 
   const headers = new Headers(options.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  if (appCheck) {
+    try {
+      const appCheckToken = await getToken(appCheck, /* forceRefresh */ false);
+      headers.set('X-Firebase-AppCheck', appCheckToken.token);
+    } catch {
+      /* App Check token fetch failing must never block the request — the
+         server only enforces it when explicitly configured to. */
+    }
+  }
 
   return fetch(url, { ...options, headers });
 }

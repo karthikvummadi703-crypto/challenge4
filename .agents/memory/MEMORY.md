@@ -8,3 +8,4 @@
 - [Nexus admin doc integrity](nexus-admin-doc-integrity.md) — admin login checks only doc existence in Firestore `admins/{uid}`; manual console edits bypass rules and can silently grant admin to any account. Always run `npm run verify:admin` first when "wrong account can log in as admin" is reported.
 - [GPU blur isolation gotcha](gpu-blur-isolation-gotcha.md) — isolating blur layers with translateZ(0)/will-change can itself reintroduce blur on rounded+overflow-hidden cards; use isolation+contain:paint only.
 - [ESLint react-hooks v7 purity rules](eslint-react-hooks-v7-purity.md) — its "recommended" config floods normal (non-Compiler) React apps with errors; hand-pick rules-of-hooks + exhaustive-deps instead.
+- [Nexus security/a11y pass decisions](nexus-security-a11y-pass.md) — CSRF model for bearer-token APIs, helmet vs custom headers, opt-in App Check, transitive audit vulns, shared modal a11y hook, coverage gap on dashboards.

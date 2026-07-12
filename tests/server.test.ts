@@ -28,6 +28,9 @@ vi.mock('../lib/firebaseAdmin', () => ({
     if (!mockIsAdmin) return res.status(403).json({ error: 'Admin privileges required.' });
     next();
   },
+  // ENFORCE_APP_CHECK is unset in tests, so the real requireAppCheck would
+  // already no-op — this mock just avoids pulling in firebase-admin/app-check.
+  requireAppCheck: (_req: import('express').Request, _res: import('express').Response, next: import('express').NextFunction) => next(),
 }));
 
 // Imported AFTER the mock is registered so server.ts picks up the mocked module.

@@ -12,7 +12,10 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
   readonly VITE_FIREBASE_APP_ID: string;
   readonly VITE_FIREBASE_FIRESTORE_DATABASE_ID: string;
+  readonly VITE_FIREBASE_MEASUREMENT_ID: string;
   readonly VITE_N8N_WEBHOOK_PRODUCTION_URL: string;
+  /** reCAPTCHA v3 site key for Firebase App Check; App Check stays off when unset. See README.md. */
+  readonly VITE_FIREBASE_APPCHECK_SITE_KEY: string;
 }
 
 interface ImportMeta {

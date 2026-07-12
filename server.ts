@@ -3,8 +3,9 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import { GoogleGenAI } from '@google/genai';
-import { requireAuth, requireAdmin, getAdminDb, isAdminSdkConfigured, AuthedRequest } from './lib/firebaseAdmin';
+import { requireAuth, requireAdmin, requireAppCheck, getAdminDb, isAdminSdkConfigured, AuthedRequest } from './lib/firebaseAdmin';
 
 dotenv.config();
 
@@ -16,6 +17,21 @@ const PORT = 5000;
 const isDev = process.env.NODE_ENV !== 'production';
 
 // ── Security headers ─────────────────────────────────────────────────────────
+// helmet fills in the headers this app didn't already set by hand (removes
+// X-Powered-By, adds X-DNS-Prefetch-Control/X-Download-Options/
+// X-Permitted-Cross-Domain-Policies/Cross-Origin-Opener-Policy/
+// Origin-Agent-Cluster). Everything helmet would otherwise set that the
+// custom middleware below already tailors per dev/prod (CSP, HSTS,
+// X-Frame-Options, Referrer-Policy, X-XSS-Protection) is turned off here so
+// the two never fight over the same header.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  hsts: false,
+  frameguard: false,
+  referrerPolicy: false,
+  xssFilter: false,
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+}));
 app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -69,6 +85,35 @@ const sanitize = (val: unknown): string =>
 /** Returns 400 with a consistent error shape. */
 const badRequest = (res: Response, message: string) =>
   res.status(400).json({ error: message });
+
+// ── CSRF ──────────────────────────────────────────────────────────────────────
+// This app has no cookie-based session — every authenticated request carries
+// its Firebase ID token as an `Authorization: Bearer <token>` header, attached
+// client-side in apiClient.ts. A cross-site <form> submission (the classic
+// CSRF vector) cannot set a custom Authorization header or an
+// application/json body, so the browser can never forge a request that would
+// pass `requireAuth`. Traditional CSRF tokens (csurf, double-submit cookie)
+// exist to protect cookie-based sessions and don't apply to bearer-token
+// APIs — adding one here would protect nothing while adding a second,
+// unrelated token to manage.
+//
+// As defense-in-depth, this middleware still rejects any state-changing
+// request that isn't declared as JSON: forcing `Content-Type: application/json`
+// means a plain HTML form (which can only send
+// application/x-www-form-urlencoded, multipart/form-data, or text/plain)
+// can never trigger a "simple request" against these routes without
+// tripping a CORS preflight first.
+function requireJsonContentType(req: Request, res: Response, next: NextFunction) {
+  const contentType = req.headers['content-type'] || '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    return res.status(415).json({ error: 'Content-Type must be application/json.' });
+  }
+  next();
+}
+app.use('/api/', (req: Request, res: Response, next: NextFunction) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  return requireJsonContentType(req, res, next);
+});
 
 // Non-secret runtime config (n8n URLs). Real app data (matches, volunteers,
 // tasks, orders, issues, emergencies) lives in Firestore and is read/written
@@ -134,9 +179,9 @@ async function getStadiumTelemetry(): Promise<TelemetryResult> {
 
 // ── Config (admin-only: exposes internal n8n webhook URLs) ────────────────────
 
-app.get('/api/config', requireAuth, requireAdmin, (_req, res) => res.json(config));
+app.get('/api/config', requireAuth, requireAdmin, requireAppCheck, (_req, res) => res.json(config));
 
-app.post('/api/config', requireAuth, requireAdmin, (req: Request, res: Response) => {
+app.post('/api/config', requireAuth, requireAdmin, requireAppCheck, (req: Request, res: Response) => {
   const { n8nWebhookUrl, n8nAiAssistantUrl, useMockAI } = req.body;
   const urlPattern = /^https?:\/\/.+/;
 
@@ -323,7 +368,7 @@ app.post('/api/ai/demo-command', demoAiLimiter, async (req: Request, res: Respon
 
 // ── AI command (any authenticated fan/volunteer/admin) ─────────────────────────
 
-app.post('/api/ai/command', requireAuth, async (req: AuthedRequest, res: Response) => {
+app.post('/api/ai/command', requireAuth, requireAppCheck, async (req: AuthedRequest, res: Response) => {
   const text = sanitize(req.body.text);
   if (!text) return badRequest(res, 'Command string is required.');
   if (text.length > 500) return badRequest(res, 'Command too long. Maximum 500 characters.');

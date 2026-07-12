@@ -12,7 +12,7 @@ import { useAuth } from '../context/authContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
-import { addRecord } from '../services/dataSource';
+import { createRecordWithTask } from '../services/dataSource';
 import { useDemoMode } from '../context/demoModeContext';
 import { OrderedItem } from '../types';
 
@@ -194,28 +194,29 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     const totalPrice = orderedItems.reduce((acc, cur) => acc + (Number(cur.price) * Number(cur.quantity)), 0);
 
     try {
-      const orderDoc = await addRecord('foodOrders', {
-        items: orderedItems,
-        seatNumber: currentUser?.seatNumber || seatNumber,
-        totalPrice,
-        status: 'pending',
-        timestamp: new Date().toISOString(),
-        fanUid: user?.uid || 'anonymous',
-        fanName: currentUser?.name || 'Anonymous Fan'
-      });
-
       const taskDetails = `Deliver ${orderedItems.map((i: OrderedItem) => `${i.name} (x${i.quantity})`).join(", ")}`;
-      await addRecord('tasks', {
-        type: 'Deliver Food',
-        details: taskDetails,
-        seatNumber: currentUser?.seatNumber || seatNumber,
-        priority: 'Medium',
-        status: 'pending',
-        timestamp: new Date().toISOString(),
-        linkedId: orderDoc.id,
-        fanUid: user?.uid || 'anonymous',
-        fanName: currentUser?.name || 'Anonymous Fan'
-      });
+      await createRecordWithTask(
+        'foodOrders',
+        {
+          items: orderedItems,
+          seatNumber: currentUser?.seatNumber || seatNumber,
+          totalPrice,
+          status: 'pending',
+          timestamp: new Date().toISOString(),
+          fanUid: user?.uid || 'anonymous',
+          fanName: currentUser?.name || 'Anonymous Fan'
+        },
+        {
+          type: 'Deliver Food',
+          details: taskDetails,
+          seatNumber: currentUser?.seatNumber || seatNumber,
+          priority: 'Medium',
+          status: 'pending',
+          timestamp: new Date().toISOString(),
+          fanUid: user?.uid || 'anonymous',
+          fanName: currentUser?.name || 'Anonymous Fan'
+        }
+      );
 
       setCart({});
       setOrderSuccess(true);
@@ -244,25 +245,26 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     if (!emergencySeat.trim()) return;
 
     try {
-      const emergencyDoc = await addRecord('emergencyRequests', {
-        seatNumber: emergencySeat,
-        status: 'active',
-        timestamp: new Date().toISOString(),
-        fanUid: user?.uid || 'anonymous',
-        fanName: currentUser?.name || 'Anonymous Fan'
-      });
-
-      await addRecord('tasks', {
-        type: 'Medical Emergency',
-        details: 'CRITICAL: First Responder assistance requested.',
-        seatNumber: emergencySeat,
-        priority: 'High',
-        status: 'pending',
-        timestamp: new Date().toISOString(),
-        linkedId: emergencyDoc.id,
-        fanUid: user?.uid || 'anonymous',
-        fanName: currentUser?.name || 'Anonymous Fan'
-      });
+      await createRecordWithTask(
+        'emergencyRequests',
+        {
+          seatNumber: emergencySeat,
+          status: 'active',
+          timestamp: new Date().toISOString(),
+          fanUid: user?.uid || 'anonymous',
+          fanName: currentUser?.name || 'Anonymous Fan'
+        },
+        {
+          type: 'Medical Emergency',
+          details: 'CRITICAL: First Responder assistance requested.',
+          seatNumber: emergencySeat,
+          priority: 'High',
+          status: 'pending',
+          timestamp: new Date().toISOString(),
+          fanUid: user?.uid || 'anonymous',
+          fanName: currentUser?.name || 'Anonymous Fan'
+        }
+      );
 
       setEmergencySuccess(true);
       setChatLogs(prev => [...prev, {
@@ -281,27 +283,28 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     if (!issueDescription.trim()) return;
 
     try {
-      const issueDoc = await addRecord('issueReports', {
-        category: selectedIssueCategory,
-        seatNumber: currentUser?.seatNumber || seatNumber,
-        description: issueDescription,
-        status: 'open',
-        timestamp: new Date().toISOString(),
-        fanUid: user?.uid || 'anonymous',
-        fanName: currentUser?.name || 'Anonymous Fan'
-      });
-
-      await addRecord('tasks', {
-        type: selectedIssueCategory === 'Broken Seat' ? 'Seat Issue' : 'Complaint Resolution',
-        details: `${selectedIssueCategory} - ${issueDescription}`,
-        seatNumber: currentUser?.seatNumber || seatNumber,
-        priority: selectedIssueCategory === 'Harassment' ? 'High' : 'Medium',
-        status: 'pending',
-        timestamp: new Date().toISOString(),
-        linkedId: issueDoc.id,
-        fanUid: user?.uid || 'anonymous',
-        fanName: currentUser?.name || 'Anonymous Fan'
-      });
+      await createRecordWithTask(
+        'issueReports',
+        {
+          category: selectedIssueCategory,
+          seatNumber: currentUser?.seatNumber || seatNumber,
+          description: issueDescription,
+          status: 'open',
+          timestamp: new Date().toISOString(),
+          fanUid: user?.uid || 'anonymous',
+          fanName: currentUser?.name || 'Anonymous Fan'
+        },
+        {
+          type: selectedIssueCategory === 'Broken Seat' ? 'Seat Issue' : 'Complaint Resolution',
+          details: `${selectedIssueCategory} - ${issueDescription}`,
+          seatNumber: currentUser?.seatNumber || seatNumber,
+          priority: selectedIssueCategory === 'Harassment' ? 'High' : 'Medium',
+          status: 'pending',
+          timestamp: new Date().toISOString(),
+          fanUid: user?.uid || 'anonymous',
+          fanName: currentUser?.name || 'Anonymous Fan'
+        }
+      );
 
       setIssueDescription('');
       setIssueSuccess(true);

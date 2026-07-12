@@ -47,6 +47,7 @@ const {
   addRecord,
   updateRecord,
   deleteRecord,
+  createRecordWithTask,
 } = await import('../src/services/dataSource');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,6 +177,62 @@ describe('deleteRecord routing', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+describe('createRecordWithTask', () => {
+  beforeEach(() => {
+    setDemoModeActive(false);
+    vi.clearAllMocks();
+  });
+
+  it('creates the primary record then a linked task with matching linkedId (Firestore)', async () => {
+    mockAddDoc
+      .mockResolvedValueOnce({ id: 'order-1' })
+      .mockResolvedValueOnce({ id: 'task-1' });
+
+    const result = await createRecordWithTask(
+      'foodOrders',
+      { status: 'pending' },
+      { type: 'Deliver Food', status: 'pending' }
+    );
+
+    expect(mockAddDoc).toHaveBeenCalledTimes(2);
+    // Second call creates the task with linkedId pointing at the first record.
+    const [, taskData] = mockAddDoc.mock.calls[1] as [unknown, Record<string, unknown>];
+    expect(taskData.linkedId).toBe('order-1');
+    expect(taskData.type).toBe('Deliver Food');
+    expect(result).toEqual({ recordId: 'order-1', taskId: 'task-1' });
+  });
+
+  it('routes both writes through the demo store when demo mode is on', async () => {
+    setDemoModeActive(true);
+    mockAddDemoDoc
+      .mockReturnValueOnce({ id: 'demo-order-1' })
+      .mockReturnValueOnce({ id: 'demo-task-1' });
+
+    const result = await createRecordWithTask(
+      'issueReports',
+      { category: 'Broken Seat' },
+      { type: 'Seat Issue' }
+    );
+
+    expect(mockAddDemoDoc).toHaveBeenCalledTimes(2);
+    expect(mockAddDoc).not.toHaveBeenCalled();
+    const [, taskData] = mockAddDemoDoc.mock.calls[1] as [unknown, Record<string, unknown>];
+    expect(taskData.linkedId).toBe('demo-order-1');
+    expect(result).toEqual({ recordId: 'demo-order-1', taskId: 'demo-task-1' });
+  });
+
+  it('propagates an error and never creates the task when the primary record write fails', async () => {
+    mockAddDoc.mockRejectedValueOnce(new Error('PERMISSION_DENIED'));
+
+    await expect(
+      createRecordWithTask('emergencyRequests', { status: 'active' }, { type: 'Medical Emergency' })
+    ).rejects.toThrow('PERMISSION_DENIED');
+
+    // Only the (failed) primary-record write should have been attempted.
+    expect(mockAddDoc).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('subscribeCollection — Firestore snapshot adapter', () => {
   beforeEach(() => {

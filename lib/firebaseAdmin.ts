@@ -1,6 +1,7 @@
 import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAppCheck, AppCheck } from 'firebase-admin/app-check';
 import type { Request, Response, NextFunction } from 'express';
 
 /**
@@ -15,6 +16,7 @@ import type { Request, Response, NextFunction } from 'express';
 let app: App | null = null;
 let authAdmin: Auth | null = null;
 let dbAdmin: Firestore | null = null;
+let appCheckAdmin: AppCheck | null = null;
 let initError: string | null = null;
 
 function init() {
@@ -29,6 +31,7 @@ function init() {
     app = getApps().length ? getApps()[0] : initializeApp({ credential: cert(serviceAccount) });
     authAdmin = getAuth(app);
     dbAdmin = getFirestore(app);
+    appCheckAdmin = getAppCheck(app);
   } catch (err) {
     initError = `Failed to parse/initialize FIREBASE_SERVICE_ACCOUNT_KEY: ${(err as Error).message}`;
   }
@@ -81,5 +84,31 @@ export async function requireAdmin(req: AuthedRequest, res: Response, next: Next
     next();
   } catch (err) {
     res.status(500).json({ error: 'Failed to verify admin privileges.' });
+  }
+}
+
+/**
+ * Verifies the `X-Firebase-AppCheck` header (see src/firebase.ts /
+ * src/services/apiClient.ts on the client side) attests this request came
+ * from the real app build, not a script calling the API directly.
+ *
+ * Opt-in via the `ENFORCE_APP_CHECK` env var so existing deployments that
+ * haven't done the one-time Firebase Console setup (see README.md "Firebase
+ * App Check") keep working unchanged — flipping it on is a deliberate,
+ * documented step, not a silent behavior change.
+ */
+export async function requireAppCheck(req: Request, res: Response, next: NextFunction) {
+  if (process.env.ENFORCE_APP_CHECK !== 'true') return next();
+  const token = req.headers['x-firebase-appcheck'];
+  if (!token || typeof token !== 'string') {
+    return res.status(401).json({ error: 'Missing X-Firebase-AppCheck header.' });
+  }
+  try {
+    init();
+    if (!appCheckAdmin) throw new Error(initError || 'Firebase Admin SDK is not initialized.');
+    await appCheckAdmin.verifyToken(token);
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid or expired App Check token.' });
   }
 }

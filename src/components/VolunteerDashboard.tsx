@@ -163,77 +163,83 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
   };
 
 
-  // Accept task handler
-  const handleAcceptTask = async (taskId: string) => {
+  /**
+   * Shared skeleton for task-status handlers: looks up `taskId` in the
+   * current task list, silently no-ops if it's missing (already handled
+   * elsewhere / stale click), runs `apply`, and reports any Firestore error
+   * uniformly. Both accept and complete flows share this exact shape —
+   * "find task → mutate tasks doc → mutate whichever doc it's linked to".
+   */
+  const runTaskAction = useCallback(async (
+    taskId: string,
+    apply: (task: Task) => Promise<void>,
+    errorLabel: string
+  ) => {
     if (!currentVolunteer) return;
-    
     try {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
-
-      await updateRecord('tasks', taskId, {
-        status: 'accepted',
-        assignedTo: currentVolunteer.volunteerId
-      });
-
-      // Update linked document status
-      const linkedId = task.linkedId;
-      if (linkedId) {
-        if (task.type === 'Deliver Food') {
-          await updateRecord('foodOrders', linkedId, {
-            status: 'preparing'
-          });
-        } else {
-          // It's a seat/complaint report, set assigned volunteer
-          await updateRecord('issueReports', linkedId, {
-            assignedVolunteer: currentVolunteer.volunteerId
-          });
-        }
-      }
+      await apply(task);
     } catch (err) {
-      console.error("Error accepting task:", err);
+      console.error(errorLabel, err);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVolunteer, tasks]);
+
+  // Accept task handler
+  const handleAcceptTask = (taskId: string) => runTaskAction(taskId, async (task) => {
+    await updateRecord('tasks', taskId, {
+      status: 'accepted',
+      assignedTo: currentVolunteer!.volunteerId
+    });
+
+    // Update linked document status
+    const linkedId = task.linkedId;
+    if (linkedId) {
+      if (task.type === 'Deliver Food') {
+        await updateRecord('foodOrders', linkedId, {
+          status: 'preparing'
+        });
+      } else {
+        // It's a seat/complaint report, set assigned volunteer
+        await updateRecord('issueReports', linkedId, {
+          assignedVolunteer: currentVolunteer!.volunteerId
+        });
+      }
+    }
+  }, "Error accepting task:");
 
   // Complete task handler
-  const handleCompleteTask = async (taskId: string) => {
-    if (!currentVolunteer) return;
-    try {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
+  const handleCompleteTask = (taskId: string) => runTaskAction(taskId, async (task) => {
+    const completionTime = new Date().toISOString();
+    const deliveryTimeMs = Date.now() - new Date(task.timestamp).getTime();
 
-      const completionTime = new Date().toISOString();
-      const deliveryTimeMs = Date.now() - new Date(task.timestamp).getTime();
+    await updateRecord('tasks', taskId, {
+      status: 'completed',
+      deliveryTimeMs,
+      completedAt: completionTime
+    });
 
-      await updateRecord('tasks', taskId, {
-        status: 'completed',
-        deliveryTimeMs,
-        completedAt: completionTime
-      });
-
-      // Update linked document status
-      const linkedId = task.linkedId;
-      if (linkedId) {
-        if (task.type === 'Deliver Food') {
-          await updateRecord('foodOrders', linkedId, {
-            status: 'delivered'
-          });
-        } else if (task.type === 'Medical Emergency') {
-          await updateRecord('emergencyRequests', linkedId, {
-            status: 'resolved'
-          });
-        } else {
-          // Seating/Incidents
-          await updateRecord('issueReports', linkedId, {
-            status: 'resolved'
-          });
-        }
+    // Update linked document status
+    const linkedId = task.linkedId;
+    if (linkedId) {
+      if (task.type === 'Deliver Food') {
+        await updateRecord('foodOrders', linkedId, {
+          status: 'delivered'
+        });
+      } else if (task.type === 'Medical Emergency') {
+        await updateRecord('emergencyRequests', linkedId, {
+          status: 'resolved'
+        });
+      } else {
+        // Seating/Incidents
+        await updateRecord('issueReports', linkedId, {
+          status: 'resolved'
+        });
       }
-      setHighlightedSeat(undefined);
-    } catch (err) {
-      console.error("Error completing task:", err);
     }
-  };
+    setHighlightedSeat(undefined);
+  }, "Error completing task:");
 
   // Floating AI Chat Submission
   const handleSendAiText = (e: React.FormEvent) => {
@@ -475,8 +481,17 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
                 otherTasks.map((task) => (
                   <div 
                     key={task.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Highlight seat ${task.seatNumber} on the stadium map for ${task.type} task: ${task.details}`}
                     onClick={() => setHighlightedSeat(task.seatNumber)}
-                    className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer flex items-center justify-between group"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setHighlightedSeat(task.seatNumber);
+                      }
+                    }}
+                    className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer flex items-center justify-between group focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">

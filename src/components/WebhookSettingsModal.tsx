@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Save, X, ToggleLeft, ToggleRight, Sparkles, AlertCircle } from 'lucide-react';
 import { SystemConfig } from '../types';
 import { authedFetch } from '../services/apiClient';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface WebhookSettingsModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const dialogRef = useModalA11y<HTMLDivElement>(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {
@@ -84,6 +86,11 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
 
           {/* Modal Container */}
           <motion.div 
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="webhook-settings-title"
+            tabIndex={-1}
             initial={{ scale: 0.95, y: 20, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 20, opacity: 0 }}
@@ -94,7 +101,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
             <div className="bg-gradient-to-r from-emerald-950/80 to-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Settings className="h-5 w-5 text-emerald-400 animate-spin-slow" />
-                <h3 className="font-sans font-bold text-base text-white tracking-wide">Nexus AI Integration Center</h3>
+                <h3 id="webhook-settings-title" className="font-sans font-bold text-base text-white tracking-wide">Nexus AI Integration Center</h3>
               </div>
               <button 
                 onClick={onClose}

@@ -111,3 +111,27 @@ export async function deleteRecord(name: DemoCollectionName, id: string): Promis
   }
   await deleteDoc(doc(db, name, id));
 }
+
+/**
+ * Creates a primary record in `collectionName`, then creates a linked `tasks`
+ * record whose `linkedId` points at the new record's id.
+ *
+ * Several Fan-facing flows (food orders, emergency beacons, issue reports)
+ * all follow this exact "create record → create linked task" shape, so it's
+ * centralized here instead of being re-implemented at each call site.
+ *
+ * @param collectionName - Firestore collection for the primary record (e.g. `foodOrders`).
+ * @param recordData - Fields to write to the primary record.
+ * @param taskData - Fields to write to the new `tasks` record; `linkedId` is
+ *   added automatically and should not be included here.
+ * @returns The ids of both the primary record and the created task.
+ */
+export async function createRecordWithTask(
+  collectionName: DemoCollectionName,
+  recordData: Record<string, unknown>,
+  taskData: Record<string, unknown>
+): Promise<{ recordId: string; taskId: string }> {
+  const record = await addRecord(collectionName, recordData);
+  const task = await addRecord('tasks', { ...taskData, linkedId: record.id });
+  return { recordId: record.id, taskId: task.id };
+}

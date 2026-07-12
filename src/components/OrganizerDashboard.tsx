@@ -13,6 +13,7 @@ import { getFriendlyErrorMessage } from '../services/authService';
 import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
 import { subscribeCollection, addRecord, deleteRecord } from '../services/dataSource';
 import { useDemoMode } from '../context/demoModeContext';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface OrganizerDashboardProps {
   onLogout: () => void;
@@ -61,6 +62,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   // Publishing State
   const [isPublished, setIsPublished] = useState(false);
   const [showPublishSuccessModal, setShowPublishSuccessModal] = useState(false);
+  const publishSuccessModalRef = useModalA11y<HTMLDivElement>(showPublishSuccessModal, () => {
+    setShowPublishSuccessModal(false);
+    setActiveTab('dashboard');
+  });
 
   // Live Statistics state
   const [stats, setStats] = useState({
@@ -500,6 +505,11 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="gpu-blur-layer absolute inset-0 bg-black/80 backdrop-blur-md" />
             <motion.div
+              ref={publishSuccessModalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="publish-success-title"
+              tabIndex={-1}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -509,7 +519,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                 <CheckCircle className="h-9 w-9" />
               </div>
               <div className="space-y-2">
-                <h3 className="font-sans font-black text-2xl text-white uppercase tracking-wider">Event Published Successfully!</h3>
+                <h3 id="publish-success-title" className="font-sans font-black text-2xl text-white uppercase tracking-wider">Event Published Successfully!</h3>
                 <p className="text-xs text-slate-400">The stadium intelligence nodes are fully synchronized.</p>
               </div>
 

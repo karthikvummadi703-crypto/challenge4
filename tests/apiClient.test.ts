@@ -13,10 +13,19 @@ const { mockGetIdToken, demoModeRef } = vi.hoisted(() => ({
 }));
 
 // ── Mock firebase auth ────────────────────────────────────────────────────────
+// appCheck is null here (as it is whenever VITE_FIREBASE_APPCHECK_SITE_KEY is
+// unset) so authedFetch skips the App Check token fetch entirely — matching
+// this project's default, unconfigured state.
 vi.mock('../src/firebase', () => ({
   auth: {
     currentUser: { getIdToken: mockGetIdToken },
   },
+  appCheck: null,
+}));
+
+// ── Mock firebase/app-check (only reached if a test flips appCheck truthy) ────
+vi.mock('firebase/app-check', () => ({
+  getToken: vi.fn().mockResolvedValue({ token: 'mock-appcheck-token' }),
 }));
 
 // ── Mock dataSource (controls demo mode flag) ─────────────────────────────────

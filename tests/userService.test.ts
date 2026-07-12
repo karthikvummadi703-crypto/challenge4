@@ -69,7 +69,9 @@ import {
   createAdminProfile,
   verifyAdminAccess,
   getUserRole,
+  getUserProfile,
   updateLastLogin,
+  adminCreateVolunteer,
 } from '../src/services/userService';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -267,6 +269,85 @@ describe('getUserRole', () => {
 });
 
 // ── updateLastLogin ───────────────────────────────────────────────────────────
+
+// ── getUserProfile / findUserDocument fallback strategies ────────────────────
+
+describe('getUserProfile', () => {
+  it('returns null when no document exists in any lookup strategy', async () => {
+    const profile = await getUserProfile('uid-ghost', 'fan');
+    expect(profile).toBeNull();
+  });
+
+  it('returns the profile merged with uid when the canonical UID-keyed doc exists', async () => {
+    seedDoc('fans', 'uid-fan-x', { fullName: 'Fan X', email: 'x@test.com' });
+    const profile = await getUserProfile('uid-fan-x', 'fan');
+    expect(profile).toEqual({ uid: 'uid-fan-x', fullName: 'Fan X', email: 'x@test.com' });
+  });
+
+  it('falls back to a legacy email-keyed document and migrates it to the UID key', async () => {
+    // No doc at admins/uid-legacy, but one exists at the legacy email key.
+    seedDoc('admins', 'test@test.com', { role: 'admin', email: 'test@test.com' });
+    const profile = await getUserProfile('uid-legacy', 'admin');
+    expect(profile).not.toBeNull();
+    expect(profile?.role).toBe('admin');
+    // Best-effort migration should have written the UID-keyed doc.
+    expect(mockSetDoc).toHaveBeenCalled();
+  });
+
+  it('falls back to querying by uid field when neither UID nor email key match', async () => {
+    mockGetDocs.mockImplementationOnce(() => Promise.resolve({ empty: true, docs: [] })); // email query
+    mockGetDocs.mockImplementationOnce(() =>
+      Promise.resolve({ empty: false, docs: [{ id: 'found-doc', data: () => ({ uid: 'uid-by-field' }) }] })
+    );
+    const profile = await getUserProfile('uid-by-field', 'volunteer');
+    expect(profile).not.toBeNull();
+    expect(profile?.uid).toBe('uid-by-field');
+  });
+
+  it('returns null (fails closed) when the canonical getDoc lookup throws PERMISSION_DENIED', async () => {
+    mockGetDoc.mockRejectedValueOnce(new Error('PERMISSION_DENIED'));
+    const profile = await getUserProfile('uid-denied', 'fan');
+    expect(profile).toBeNull();
+  });
+});
+
+// ── adminCreateVolunteer ──────────────────────────────────────────────────────
+
+describe('adminCreateVolunteer', () => {
+  it('creates a Firebase Auth user and a volunteer profile, then signs out the secondary app', async () => {
+    const authMod = await import('firebase/auth');
+    await adminCreateVolunteer('New Volunteer', 'new-vol@test.com', 'password123', 'Gate C');
+
+    expect(authMod.createUserWithEmailAndPassword).toHaveBeenCalledWith(
+      expect.anything(),
+      'new-vol@test.com',
+      'password123'
+    );
+    expect(mockSetDoc).toHaveBeenCalledOnce();
+    const [, data] = mockSetDoc.mock.calls[0] as [unknown, Record<string, unknown>];
+    expect(data.role).toBe('volunteer');
+    expect(data.assignedGate).toBe('Gate C');
+    expect(authMod.signOut).toHaveBeenCalled();
+  });
+
+  it('rejects invalid registration fields before touching Firebase Auth', async () => {
+    const authMod = await import('firebase/auth');
+    await expect(adminCreateVolunteer('', 'bad-email', 'pw', 'Gate A'))
+      .rejects.toThrow('Full name is required.');
+    expect(authMod.createUserWithEmailAndPassword).not.toHaveBeenCalled();
+  });
+
+  it('still cleans up the secondary app when profile creation fails after auth succeeds', async () => {
+    const appMod = await import('firebase/app');
+    mockSetDoc.mockRejectedValueOnce(new Error('Firestore write failed'));
+
+    await expect(
+      adminCreateVolunteer('Fail Case', 'fail@test.com', 'password123')
+    ).rejects.toThrow('Firestore write failed');
+
+    expect(appMod.deleteApp).toHaveBeenCalled();
+  });
+});
 
 describe('updateLastLogin', () => {
   it('calls updateDoc with a serverTimestamp for an admin', async () => {

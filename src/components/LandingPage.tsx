@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Users, UserCheck, Shield, HelpCircle, ArrowRight, Play, FlaskConical, X } from 'lucide-react';
 import Antigravity from './Antigravity';
 import { DemoRole } from '../context/demoModeContext';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface LandingPageProps {
   onSelectRole: (role: 'organizer' | 'volunteer' | 'fan') => void;
@@ -13,6 +14,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, ronaldoConcept }: LandingPageProps) {
   const [showDemoPicker, setShowDemoPicker] = useState(false);
+  const demoPickerRef = useModalA11y<HTMLDivElement>(showDemoPicker, () => setShowDemoPicker(false));
   return (
     <div id="landing-page-root" className="relative min-h-screen bg-slate-950 text-white flex flex-col justify-between overflow-hidden">
       
@@ -223,12 +225,14 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
         >
           <div className="gpu-blur-layer absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <motion.div
+            ref={demoPickerRef}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="demo-picker-title"
+            tabIndex={-1}
             className="gpu-blur-foreground w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-5 shadow-[0_0_60px_rgba(245,158,11,0.15)]"
           >
             <div className="flex items-start justify-between">

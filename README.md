@@ -99,6 +99,26 @@ npm run dev
 ```
 The server will start running on **`http://localhost:3000`** serving both the REST APIs and Vite HMR assets.
 
+### 3. Firebase App Check (optional, off by default)
+App Check attests that requests to Firebase and to `/api/config` /
+`/api/ai/command` come from this real app build, not a script calling the
+APIs directly. It's fully opt-in — with nothing configured, the app behaves
+exactly as it always has.
+
+To turn it on:
+1. **Manual Firebase Console step (cannot be done from code):** open
+   Firebase Console → App Check → register this web app → choose
+   **reCAPTCHA v3** → create/attach a reCAPTCHA v3 site key.
+2. Set `VITE_FIREBASE_APPCHECK_SITE_KEY` to that site key (client-side —
+   makes the client start attaching App Check tokens).
+3. For local dev only, register a debug token in Firebase Console → App
+   Check → "Manage debug tokens" (the client logs one to the browser
+   console on first run once the site key is set).
+4. Set the `ENFORCE_APP_CHECK=true` server env var once you're ready for
+   `/api/config` and `/api/ai/command` to actually reject requests without a
+   valid token — leave it unset to keep enforcement off while you roll the
+   client change out.
+
 ---
 
 ## 🏆 Hackathon Winner Features
