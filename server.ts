@@ -65,15 +65,33 @@ let config = {
   useMockAI: true,
 };
 
+// ── Telemetry cache (10-second TTL) ──────────────────────────────────────────
+// The AI command endpoint calls getStadiumTelemetry on every request. Each
+// call fires 4 parallel Firestore reads. Caching for 10 seconds eliminates
+// redundant reads under burst traffic without making the data feel stale.
+interface TelemetryResult {
+  volunteersActive: number; volunteersTotal: number;
+  pendingOrders: number;    totalOrders: number;
+  openIssues: number;       totalIssues: number;
+  activeEmergencies: number;
+}
+let _telemetryCache: { value: TelemetryResult; expiresAt: number } | null = null;
+const TELEMETRY_TTL_MS = 10_000;
+
 /** Live counts from Firestore for AI context — falls back to zeros if Admin SDK isn't configured. */
-async function getStadiumTelemetry() {
-  const empty = {
+async function getStadiumTelemetry(): Promise<TelemetryResult> {
+  const empty: TelemetryResult = {
     volunteersActive: 0, volunteersTotal: 0,
     pendingOrders: 0, totalOrders: 0,
     openIssues: 0, totalIssues: 0,
     activeEmergencies: 0,
   };
   if (!isAdminSdkConfigured()) return empty;
+
+  // Return cached result if still fresh
+  if (_telemetryCache && Date.now() < _telemetryCache.expiresAt) {
+    return _telemetryCache.value;
+  }
 
   try {
     const db = getAdminDb();
@@ -83,7 +101,7 @@ async function getStadiumTelemetry() {
       db.collection('issueReports').get(),
       db.collection('emergencyRequests').get(),
     ]);
-    return {
+    const value: TelemetryResult = {
       volunteersActive: volSnap.docs.filter(d => d.data().active !== false).length,
       volunteersTotal: volSnap.size,
       pendingOrders: ordersSnap.docs.filter(d => d.data().status === 'pending').length,
@@ -92,6 +110,8 @@ async function getStadiumTelemetry() {
       totalIssues: issuesSnap.size,
       activeEmergencies: emergSnap.docs.filter(d => d.data().status === 'active').length,
     };
+    _telemetryCache = { value, expiresAt: Date.now() + TELEMETRY_TTL_MS };
+    return value;
   } catch (err) {
     console.warn('[Nexus] Failed to read live telemetry from Firestore; using zeros.', err);
     return empty;

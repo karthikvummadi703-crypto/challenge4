@@ -3,13 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LandingPage from './components/LandingPage';
-import OrganizerDashboard from './components/OrganizerDashboard';
-import VolunteerDashboard from './components/VolunteerDashboard';
-import FanDashboard from './components/FanDashboard';
 import WebhookSettingsModal from './components/WebhookSettingsModal';
+
+// Lazy-load heavy role dashboards — each user only ever visits one, so we
+// split them into separate chunks that are downloaded on demand.
+const OrganizerDashboard = lazy(() => import('./components/OrganizerDashboard'));
+const VolunteerDashboard  = lazy(() => import('./components/VolunteerDashboard'));
+const FanDashboard        = lazy(() => import('./components/FanDashboard'));
+
+/** Minimal centered spinner shown while the role-specific chunk is loading. */
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="h-10 w-10 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+    </div>
+  );
+}
 import SplashScreen from './components/SplashScreen';
 import DemoBadge from './components/DemoBadge';
 import { AuthProvider } from './context/authContext';
@@ -101,22 +113,24 @@ function AppContent() {
               />
             )}
 
-            {currentRole === 'organizer' && (
-              <OrganizerDashboard
-                onLogout={handleLogout}
-                stadiumBg={stadiumBg}
-                ronaldoConcept={ronaldoConcept}
-                onOpenSettings={() => setIsSettingsOpen(true)}
-              />
-            )}
+            <Suspense fallback={<DashboardSkeleton />}>
+              {currentRole === 'organizer' && (
+                <OrganizerDashboard
+                  onLogout={handleLogout}
+                  stadiumBg={stadiumBg}
+                  ronaldoConcept={ronaldoConcept}
+                  onOpenSettings={() => setIsSettingsOpen(true)}
+                />
+              )}
 
-            {currentRole === 'volunteer' && (
-              <VolunteerDashboard onLogout={handleLogout} />
-            )}
+              {currentRole === 'volunteer' && (
+                <VolunteerDashboard onLogout={handleLogout} />
+              )}
 
-            {currentRole === 'fan' && (
-              <FanDashboard onLogout={handleLogout} stadiumBg={stadiumBg} />
-            )}
+              {currentRole === 'fan' && (
+                <FanDashboard onLogout={handleLogout} stadiumBg={stadiumBg} />
+              )}
+            </Suspense>
           </motion.div>
         )}
       </AnimatePresence>

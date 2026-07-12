@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, ShieldAlert, Coffee, AlertTriangle } from 'lucide-react';
 
@@ -9,7 +9,7 @@ interface SeatMapProps {
   onSeatSelect?: (seatId: string) => void;
 }
 
-export default function StadiumSeatMap({
+function StadiumSeatMap({
   highlightedSeat,
   activeTasks = [],
   showHeatmap = false,
@@ -238,3 +238,7 @@ export default function StadiumSeatMap({
     </div>
   );
 }
+
+// Memoised so parent re-renders (e.g. the 1-second score timer in FanDashboard)
+// don't force the entire SVG seat-map to reconcile on every tick.
+export default memo(StadiumSeatMap);

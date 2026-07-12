@@ -7,6 +7,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import StadiumSeatMap from './StadiumSeatMap';
+import MatchTimer from './MatchTimer';
 import { useAuth } from '../context/authContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -134,21 +135,6 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   const [chatInput, setChatInput] = useState('');
   const [isAiAnswering, setIsAiAnswering] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
-
-  // Match score timer (Dynamic tick simulation)
-  const [matchSeconds, setMatchSeconds] = useState(4104); // 68:24
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setMatchSeconds(sec => sec + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatMatchTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const remSecs = secs % 60;
-    return `${mins}:${remSecs < 10 ? '0' : ''}${remSecs}`;
-  };
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -625,10 +611,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
                 {/* Score */}
                 <div className="text-center space-y-1">
                   <div className="text-3xl sm:text-4xl font-sans font-black tracking-wider text-white">2 - 1</div>
-                  <div className="inline-flex items-center space-x-1.5 bg-rose-950/40 border border-rose-800/20 px-2.5 py-0.5 rounded-full">
-                    <span className="h-1.5 w-1.5 bg-rose-500 rounded-full animate-ping" />
-                    <span className="text-[10px] font-mono text-rose-400 font-semibold">{formatMatchTime(matchSeconds)} • LIVE</span>
-                  </div>
+                  <MatchTimer />
                 </div>
 
                 {/* Team 2 */}
