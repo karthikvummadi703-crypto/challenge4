@@ -75,7 +75,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
     const fetchDemoVolunteers = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'volunteers'));
-        const volsList: any[] = [];
+        const volsList: DemoVolunteerAccount[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           volsList.push({
@@ -139,7 +139,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
     setIsLoggingIn(true);
     try {
       await loginUser(email, password, 'volunteer');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLoginError(getFriendlyErrorMessage(err));
     } finally {
       setIsLoggingIn(false);
@@ -147,14 +147,15 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
   };
 
   // Login with a specific chosen demo account
-  const handleQuickLogin = async (acc: any) => {
+  const handleQuickLogin = async (acc: DemoVolunteerAccount) => {
     setEmail(acc.email);
     setPassword('password123');
     setLoginError('');
     setIsLoggingIn(true);
     try {
       await loginUser(acc.email, 'password123', 'volunteer');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      console.error('Quick login failed:', err);
       setLoginError("Could not log in. Ensure the password matches 'password123' or your custom password.");
     } finally {
       setIsLoggingIn(false);

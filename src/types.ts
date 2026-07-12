@@ -76,3 +76,19 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+/** Real-time alert shown in the Organizer dashboard alerts panel. */
+export interface StadiumAlert {
+  id: string;
+  /** 'Emergency' for medical/safety beacons; any other string for operational issues. */
+  type: string;
+  message: string;
+  timestamp: string;
+}
+
+/** A single line-item in a food order. */
+export interface OrderedItem {
+  name: string;
+  quantity: number;
+  price: number;
+}

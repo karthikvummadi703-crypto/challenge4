@@ -64,7 +64,17 @@ export function subscribeCollection(
   if (demoModeActive) {
     return subscribeDemo(name, (records) => cb(toFakeSnapshot(records)));
   }
-  return onSnapshot(collection(db, name), (snapshot) => cb(snapshot as any));
+  return onSnapshot(collection(db, name), (snapshot) => {
+    // Adapt the Firestore QuerySnapshot to the FakeQuerySnapshot shape so
+    // components work identically in live and demo mode.
+    const adapted: FakeQuerySnapshot = {
+      docs: snapshot.docs.map((d) => ({ id: d.id, data: () => d.data() })),
+      size: snapshot.size,
+      forEach: (cb2) =>
+        snapshot.docs.forEach((d) => cb2({ id: d.id, data: () => d.data() })),
+    };
+    cb(adapted);
+  });
 }
 
 /** Equivalent of addDoc(collection(db, name), data). */

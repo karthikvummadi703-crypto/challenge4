@@ -14,8 +14,10 @@ export interface UserProfile {
   volunteerId?: string;
   assignedGate?: string;
   active?: boolean;
-  createdAt?: any;
-  lastLogin?: any;
+  /** Firestore server timestamp on creation; string when read back from emulator/REST. */
+  createdAt?: unknown;
+  /** Firestore server timestamp on last login; string when read back from emulator/REST. */
+  lastLogin?: unknown;
   profileCompleted?: boolean;
   seatNumber?: string;
   phone?: string;

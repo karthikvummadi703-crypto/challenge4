@@ -5,10 +5,10 @@ import {
   Map, MessageSquare, LogOut, Trash2, Send, Activity, Settings, 
   AlertTriangle, Coffee, RefreshCw, Sparkles, HelpCircle, Loader2 
 } from 'lucide-react';
-import { Match, Volunteer, Task, SystemConfig } from '../types';
+import { Match, Volunteer, Task, SystemConfig, StadiumAlert } from '../types';
 import StadiumSeatMap from './StadiumSeatMap';
 import { useAuth } from '../context/authContext';
-import { adminCreateVolunteer } from '../services/userService';
+import { adminCreateVolunteer, verifyAdminAccess } from '../services/userService';
 import { getFriendlyErrorMessage } from '../services/authService';
 import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
 import { subscribeCollection, addRecord, deleteRecord } from '../services/dataSource';
@@ -69,7 +69,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     openIssues: 0,
     activeEmergencies: 0,
     attendance: 0,
-    recentAlerts: [] as any[]
+    recentAlerts: [] as StadiumAlert[]
   });
 
   // AI Chat State
@@ -79,6 +79,33 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const [inputText, setInputText] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // ── Secondary Firestore admin guard ────────────────────────────────────────
+  // Even after the auth-context loginUser() gate passes, verify on every mount
+  // and whenever the authenticated user changes that a Firestore /admins doc
+  // actually exists.  This catches any residual race-condition where a non-admin
+  // Firebase Auth session survives into the dashboard.
+  useEffect(() => {
+    if (isOrganizerDemo) return;          // Demo mode bypasses Firestore
+    if (!user) return;                     // Not logged in — login form shows
+
+    let cancelled = false;
+    verifyAdminAccess(user.uid, user.email ?? '')
+      .then((isAdmin) => {
+        if (cancelled) return;
+        if (!isAdmin) {
+          console.warn('[OrganizerDashboard] User is not in admins collection — forcing logout.');
+          logoutUser().catch(() => null);
+        }
+      })
+      .catch(() => {
+        // Firestore unreachable → fail closed
+        if (!cancelled) logoutUser().catch(() => null);
+      });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, isOrganizerDemo]);
 
   // Real-time Firestore subscriptions for Admin Panel
   useEffect(() => {
@@ -123,15 +150,15 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     const unsubIssues = subscribeCollection('issueReports', (snapshot) => {
       const openIssuesCount = snapshot.docs.filter(d => d.data().status === 'open' || d.data().status === 'pending').length;
       
-      const newAlerts: any[] = [];
+      const newAlerts: StadiumAlert[] = [];
       snapshot.forEach(docSnap => {
         const d = docSnap.data();
         if (d.status === 'open' || d.status === 'pending') {
           newAlerts.push({
             id: docSnap.id,
-            type: d.category || 'Issue',
-            message: d.description || 'Stadium issue logged',
-            timestamp: d.timestamp || new Date().toISOString()
+            type: (d.category as string) || 'Issue',
+            message: (d.description as string) || 'Stadium issue logged',
+            timestamp: (d.timestamp as string) || new Date().toISOString(),
           });
         }
       });
@@ -147,15 +174,15 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     const unsubEmergencies = subscribeCollection('emergencyRequests', (snapshot) => {
       const activeEmergenciesCount = snapshot.docs.filter(d => d.data().status === 'active').length;
       
-      const newEmergencies: any[] = [];
+      const newEmergencies: StadiumAlert[] = [];
       snapshot.forEach(docSnap => {
         const d = docSnap.data();
         if (d.status === 'active') {
           newEmergencies.push({
             id: docSnap.id,
             type: 'Emergency',
-            message: `CRITICAL BEACON AT SEAT ${d.seatNumber}`,
-            timestamp: d.timestamp || new Date().toISOString()
+            message: `CRITICAL BEACON AT SEAT ${d.seatNumber as string}`,
+            timestamp: (d.timestamp as string) || new Date().toISOString(),
           });
         }
       });
@@ -179,8 +206,8 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
           matchDate: data.matchDate,
           matchTime: data.matchTime,
           ticketPrice: Number(data.ticketPrice),
-          published: data.published
-        } as any);
+          published: Boolean(data.published),
+        });
       });
       setMatches(matchesList);
       if (matchesList.some(m => m.published)) {
@@ -226,7 +253,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       // the browser create /admins/{uid} documents would let any authenticated
       // user grant themselves admin access.
       await loginUser(email, password, 'admin');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLoginError(getFriendlyErrorMessage(err));
     } finally {
       setIsLoggingIn(false);
@@ -312,9 +339,9 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       setNewVolunteerGate('Gate A');
       
       // onSnapshot subscriptions update the volunteer list automatically
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to register volunteer:", err);
-      alert(err.message || "Failed to register volunteer. Ensure email is unique!");
+      alert(err instanceof Error ? err.message : "Failed to register volunteer. Ensure email is unique!");
     } finally {
       setIsCreatingVolunteer(false);
     }
@@ -670,7 +697,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                     {stats.recentAlerts.length === 0 ? (
                       <p className="text-xs text-slate-500 text-center py-6">All clear. No active alerts on stadium network.</p>
                     ) : (
-                      stats.recentAlerts.map((alert: any) => (
+                      stats.recentAlerts.map((alert: StadiumAlert) => (
                         <div key={alert.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <span aria-hidden="true" className={`h-2 w-2 rounded-full ${alert.type === 'Emergency' ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />

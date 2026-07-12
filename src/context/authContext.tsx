@@ -1,7 +1,20 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import {
+  onAuthStateChanged,
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from 'firebase/auth';
 import { auth } from '../firebase';
-import { getUserRole, getUserProfile, createFanProfile, updateLastLogin, verifyAdminAccess, UserProfile, FanRegistrationDetails } from '../services/userService';
+import {
+  getUserRole,
+  getUserProfile,
+  createFanProfile,
+  updateLastLogin,
+  verifyAdminAccess,
+  UserProfile,
+  FanRegistrationDetails,
+} from '../services/userService';
 import { getFriendlyErrorMessage, logout } from '../services/authService';
 
 interface AuthContextType {
@@ -11,41 +24,66 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   setError: (err: string | null) => void;
-  signUpFan: (fullName: string, email: string, password: string, seatNumber?: string, details?: FanRegistrationDetails) => Promise<void>;
-  loginUser: (email: string, password: string, expectedRole?: 'admin' | 'volunteer' | 'fan') => Promise<void>;
+  signUpFan: (
+    fullName: string,
+    email: string,
+    password: string,
+    seatNumber?: string,
+    details?: FanRegistrationDetails
+  ) => Promise<void>;
+  loginUser: (
+    email: string,
+    password: string,
+    expectedRole?: 'admin' | 'volunteer' | 'fan'
+  ) => Promise<void>;
   logoutUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser]       = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [role, setRole] = useState<'admin' | 'volunteer' | 'fan' | null>(null);
+  const [role, setRole]       = useState<'admin' | 'volunteer' | 'fan' | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
+
+  /**
+   * While loginUser() is running, suppress onAuthStateChanged updates.
+   * loginUser() manages state atomically — it only commits user/role to React
+   * state after ALL role checks pass. Without this lock, the listener fires
+   * when signInWithEmailAndPassword() succeeds and races to set state.
+   */
+  const loginLock = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Let loginUser() finish; it will set state itself.
+      if (loginLock.current) return;
+
       setLoading(true);
       setError(null);
+
       if (firebaseUser) {
         try {
-          setUser(firebaseUser);
+          // Determine role BEFORE touching user state — no "flash" of user=X, role=null
           const userRole = await getUserRole(firebaseUser.uid);
           if (userRole) {
-            setRole(userRole);
             const userProfile = await getUserProfile(firebaseUser.uid, userRole);
+            // Commit everything together
+            setUser(firebaseUser);
+            setRole(userRole);
             setProfile(userProfile);
             await updateLastLogin(firebaseUser.uid, userRole);
           } else {
-            // No registered role in any collection
+            // Authenticated with Firebase but not in any Firestore collection
+            await logout();
             setUser(null);
             setRole(null);
             setProfile(null);
           }
-        } catch (err: any) {
-          console.error("Error restoring user profile:", err);
+        } catch (err: unknown) {
+          console.error('Error restoring user profile:', err);
           setError(getFriendlyErrorMessage(err));
           setUser(null);
           setRole(null);
@@ -56,13 +94,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setProfile(null);
         setRole(null);
       }
+
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const signUpFan = async (fullName: string, email: string, password: string, seatNumber?: string, details?: FanRegistrationDetails) => {
+  const signUpFan = async (
+    fullName: string,
+    email: string,
+    password: string,
+    seatNumber?: string,
+    details?: FanRegistrationDetails
+  ) => {
     setLoading(true);
     setError(null);
     try {
@@ -81,9 +126,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         country: details?.country,
         preferredLanguage: details?.preferredLanguage,
         favoriteTeam: details?.favoriteTeam,
-        profileCompleted: true
+        profileCompleted: true,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getFriendlyErrorMessage(err));
       throw err;
     } finally {
@@ -91,17 +136,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const loginUser = async (email: string, password: string, expectedRole?: 'admin' | 'volunteer' | 'fan') => {
+  const loginUser = async (
+    email: string,
+    password: string,
+    expectedRole?: 'admin' | 'volunteer' | 'fan'
+  ) => {
+    // Acquire the lock so onAuthStateChanged doesn't race us
+    loginLock.current = true;
     setLoading(true);
     setError(null);
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
-      // ── Admin portal: strict admins-collection check ──────────────────────
-      // This MUST run before getUserRole so that no multi-strategy fallback
-      // can accidentally grant dashboard access to a non-admin Firebase user.
-      // The check is fail-closed: if Firestore is unreachable, access is denied.
+      // ── STEP 1: Admin portal hard gate ────────────────────────────────────
+      // verifyAdminAccess is fail-closed: if Firestore is unreachable it
+      // returns false and access is denied. This runs before getUserRole so
+      // the multi-strategy fallback in that function cannot bypass the check.
       if (expectedRole === 'admin') {
         const isAdmin = await verifyAdminAccess(
           firebaseUser.uid,
@@ -114,13 +166,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setRole(null);
           const err = new Error(
             'Access Denied: This email is not registered as an organizer. ' +
-            'Only accounts pre-registered in the admin portal may log in here.'
+            'Only pre-registered admin accounts may access this portal.'
           );
           setError(err.message);
           throw err;
         }
       }
 
+      // ── STEP 2: Cross-collection role resolution ───────────────────────────
       const userRole = await getUserRole(firebaseUser.uid);
 
       if (!userRole) {
@@ -128,7 +181,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
         setProfile(null);
         setRole(null);
-        const err = new Error("Access Denied: Account is not configured in any role.");
+        const err = new Error('Access Denied: Account has no role assigned.');
         setError(err.message);
         throw err;
       }
@@ -138,20 +191,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
         setProfile(null);
         setRole(null);
-        const err = new Error(`Access Denied: Incorrect portal for role "${userRole}".`);
+        const err = new Error(
+          `Access Denied: This account is registered as "${userRole}", ` +
+          `not "${expectedRole}". Please use the correct portal.`
+        );
         setError(err.message);
         throw err;
       }
 
+      // ── STEP 3: Commit state only after ALL checks pass ────────────────────
+      const userProfile = await getUserProfile(firebaseUser.uid, userRole);
       setUser(firebaseUser);
       setRole(userRole);
-      const userProfile = await getUserProfile(firebaseUser.uid, userRole);
       setProfile(userProfile);
       await updateLastLogin(firebaseUser.uid, userRole);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getFriendlyErrorMessage(err));
       throw err;
     } finally {
+      // Always release the lock; if logout() was called the subsequent
+      // onAuthStateChanged(null) will run normally and clear state.
+      loginLock.current = false;
       setLoading(false);
     }
   };
@@ -164,7 +224,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setProfile(null);
       setRole(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getFriendlyErrorMessage(err));
       throw err;
     } finally {
@@ -174,17 +234,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        role,
-        loading,
-        error,
-        setError,
-        signUpFan,
-        loginUser,
-        logoutUser
-      }}
+      value={{ user, profile, role, loading, error, setError, signUpFan, loginUser, logoutUser }}
     >
       {children}
     </AuthContext.Provider>

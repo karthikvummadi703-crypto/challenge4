@@ -14,6 +14,7 @@ import { db } from '../firebase';
 import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
 import { addRecord } from '../services/dataSource';
 import { useDemoMode } from '../context/demoModeContext';
+import { OrderedItem } from '../types';
 
 interface FanDashboardProps {
   onLogout: () => void;
@@ -203,7 +204,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
         fanName: currentUser?.name || 'Anonymous Fan'
       });
 
-      const taskDetails = `Deliver ${orderedItems.map((i: any) => `${i.name} (x${i.quantity})`).join(", ")}`;
+      const taskDetails = `Deliver ${orderedItems.map((i: OrderedItem) => `${i.name} (x${i.quantity})`).join(", ")}`;
       await addRecord('tasks', {
         type: 'Deliver Food',
         details: taskDetails,
