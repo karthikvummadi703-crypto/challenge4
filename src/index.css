@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Google Fonts are now loaded via <link> in index.html (non-render-blocking).
+   The @import below has been removed — do NOT re-add it. */
+
 @import "tailwindcss";
 
 @theme {
@@ -19,16 +21,56 @@
   body {
     font-family: var(--font-sans);
   }
+
+  /* ── Accessibility: skip-to-content link ──────────────────────────────────
+     Visually hidden at all times except when keyboard-focused.
+     This satisfies WCAG 2.4.1 (Bypass Blocks) and boosts Lighthouse
+     Accessibility score. */
+  .skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0.5rem;
+    z-index: 9999;
+    padding: 0.5rem 1rem;
+    background: #10b981;
+    color: #000;
+    font-weight: 700;
+    font-size: 0.875rem;
+    border-radius: 0 0 0.5rem 0.5rem;
+    text-decoration: none;
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus {
+    top: 0;
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+  }
+
+  /* ── Accessibility: keyboard focus ring ──────────────────────────────────
+     Ensures all interactive elements show a clear focus indicator for
+     keyboard navigation (WCAG 2.4.7 Focus Visible). Using :focus-visible
+     so mouse users are unaffected. */
+  *:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ── Accessibility: reduce motion for users who prefer it ────────────────
+     Satisfies WCAG 2.3.3 (Animation from Interactions). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 /* Custom slow spin for settings icon */
 @keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 .animate-spin-slow {
@@ -36,20 +78,10 @@
 }
 
 /* Custom scrollbar styling for dashboard panels */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
-}
-
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
 ::-webkit-scrollbar-thumb {
   background: rgba(16, 185, 129, 0.2);
   border-radius: 4px;
 }
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.4);
-}
+::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.4); }

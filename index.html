@@ -3,11 +3,66 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+
+    <!-- ── Primary SEO Meta ─────────────────────────────────────────────────── -->
+    <title>Nexus AI — FIFA World Cup 2026 Stadium Intelligence Platform</title>
+    <meta name="title"       content="Nexus AI — FIFA World Cup 2026 Stadium Intelligence Platform" />
+    <meta name="description" content="Nexus AI is the official FIFA World Cup 2026 stadium operations platform — real-time volunteer dispatch, fan food ordering, crowd heatmaps, and AI-powered incident response for world-class event management." />
+    <meta name="robots"      content="index, follow" />
+    <meta name="theme-color" content="#10b981" />
+    <meta name="author"      content="Nexus AI Stadium Intelligence" />
+    <meta name="keywords"    content="FIFA World Cup 2026, stadium management, volunteer dispatch, crowd heatmap, event intelligence, AI stadium, nexus ai" />
+
+    <!-- ── Favicon ──────────────────────────────────────────────────────────── -->
+    <link rel="icon"             type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon"                      href="/favicon.svg" />
+    <link rel="shortcut icon"    type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- ── Open Graph (Facebook / LinkedIn / WhatsApp) ─────────────────────── -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:site_name"   content="Nexus AI" />
+    <meta property="og:title"       content="Nexus AI — FIFA World Cup 2026 Stadium Intelligence" />
+    <meta property="og:description" content="Real-time stadium operations: volunteer dispatch, fan food ordering, crowd heatmaps, and AI-powered incident response. Built for FIFA World Cup 2026." />
+    <meta property="og:image"       content="/og-image.png" />
+    <meta property="og:image:width"  content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"   content="Nexus AI Stadium Intelligence Platform dashboard" />
+
+    <!-- ── Twitter Card ─────────────────────────────────────────────────────── -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="Nexus AI — FIFA World Cup 2026 Stadium Intelligence" />
+    <meta name="twitter:description" content="Real-time stadium operations: volunteer dispatch, fan food ordering, crowd heatmaps, and AI-powered incident response." />
+    <meta name="twitter:image"       content="/og-image.png" />
+    <meta name="twitter:image:alt"   content="Nexus AI Stadium Intelligence Platform dashboard" />
+
+    <!-- ── Performance: Preconnect to font origins before stylesheet fetch ──── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Google Fonts as a <link> (non-render-blocking) instead of CSS @import -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+
+    <!-- ── Structured Data (JSON-LD) ────────────────────────────────────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Nexus AI",
+      "description": "FIFA World Cup 2026 stadium intelligence and operations management platform",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0" }
+    }
+    </script>
   </head>
   <body>
+    <!-- Skip navigation link — visually hidden until focused (keyboard/screen reader) -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
