@@ -72,7 +72,17 @@ function StadiumSeatMap({
 
       {/* SVG Canvas */}
       <div className="relative flex-1 flex items-center justify-center my-2">
-        <svg viewBox="0 0 500 400" className="w-full max-w-[420px] h-auto drop-shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+        <svg
+          viewBox="0 0 500 400"
+          className="w-full max-w-[420px] h-auto drop-shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+          role="img"
+          aria-labelledby="seatmap-title seatmap-desc"
+        >
+          <title id="seatmap-title">Stadium Seating Map — Estádio do Nexus</title>
+          <desc id="seatmap-desc">
+            Interactive overhead view of the four stadium sectors: Sector A (North), Sector B (East),
+            Sector C (South), and Sector D (West). Active task pins and crowd heatmap overlays are shown.
+          </desc>
           {/* Outer Boundary Track */}
           <ellipse cx="250" cy="200" rx="220" ry="170" fill="none" stroke="#1e293b" strokeWidth="4" strokeDasharray="6 4" />
           

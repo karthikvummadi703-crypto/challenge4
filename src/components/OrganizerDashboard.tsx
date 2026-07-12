@@ -81,11 +81,6 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Load Data placeholder (empty since onSnapshot is real-time)
-  const loadStatsAndData = async () => {
-    // Left for compatibility and manual trigger if needed
-  };
-
   // Real-time Firestore subscriptions for Admin Panel
   useEffect(() => {
     if (!isAuthenticated) return;

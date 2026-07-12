@@ -36,8 +36,8 @@ export default defineConfig(() => {
             // React runtime — changes rarely, cached aggressively
             'vendor-react': ['react', 'react-dom'],
 
-            // Framer Motion — animation library, separate chunk
-            'vendor-motion': ['motion', 'framer-motion'],
+            // Motion (formerly Framer Motion) — animation library, separate chunk
+            'vendor-motion': ['motion'],
 
             // Three.js + React Three Fiber — heavy 3D runtime
             'vendor-three': ['three', '@react-three/fiber', 'ogl'],

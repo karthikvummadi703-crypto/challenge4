@@ -1,7 +1,8 @@
 import React, { useState, useEffect, memo } from 'react';
+import { MATCH_INITIAL_SECONDS } from '../constants';
 
 interface MatchTimerProps {
-  /** Starting seconds into the match (default 4104 = 68:24). */
+  /** Starting seconds into the match (defaults to MATCH_INITIAL_SECONDS = 68:24). */
   initialSeconds?: number;
 }
 
@@ -10,7 +11,7 @@ interface MatchTimerProps {
  * Extracted into its own component so the 1-second interval state only
  * causes this tiny subtree to re-render — not the entire FanDashboard.
  */
-function MatchTimer({ initialSeconds = 4104 }: MatchTimerProps) {
+function MatchTimer({ initialSeconds = MATCH_INITIAL_SECONDS }: MatchTimerProps) {
   const [matchSeconds, setMatchSeconds] = useState(initialSeconds);
 
   useEffect(() => {

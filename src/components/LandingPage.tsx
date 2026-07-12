@@ -214,15 +214,22 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="demo-picker-title"
             className="w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-5 shadow-[0_0_60px_rgba(245,158,11,0.15)]"
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <FlaskConical className="h-5 w-5 text-amber-400" />
-                <h3 className="font-sans font-bold text-lg text-white">Try Demo Mode</h3>
+                <h3 id="demo-picker-title" className="font-sans font-bold text-lg text-white">Try Demo Mode</h3>
               </div>
-              <button onClick={() => setShowDemoPicker(false)} className="text-slate-500 hover:text-white cursor-pointer">
-                <X className="h-5 w-5" />
+              <button
+                onClick={() => setShowDemoPicker(false)}
+                aria-label="Close demo mode picker"
+                className="text-slate-500 hover:text-white cursor-pointer"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">

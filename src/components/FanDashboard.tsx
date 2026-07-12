@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, UserPlus, LogIn, Coffee, ShieldAlert, AlertTriangle, 
@@ -212,13 +212,13 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     }
   };
 
-  const updateCartQty = (id: string, delta: number) => {
+  const updateCartQty = useCallback((id: string, delta: number) => {
     setCart(prev => {
       const cur = prev[id] || 0;
       const next = Math.max(0, cur + delta);
       return { ...prev, [id]: next };
     });
-  };
+  }, []);
 
   // Trigger Medical Emergency
   const handleTriggerEmergency = async (e: React.FormEvent) => {
@@ -298,7 +298,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   };
 
   // Ask AI Assistant Chatbot
-  const handleAskAI = (e: React.FormEvent) => {
+  const handleAskAI = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
@@ -317,10 +317,10 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
       .finally(() => {
         setIsAiAnswering(false);
       });
-  };
+  }, [chatInput]);
 
   // Quick preset query triggers
-  const triggerPresetQuery = (txt: string) => {
+  const triggerPresetQuery = useCallback((txt: string) => {
     setChatLogs(prev => [...prev, { sender: 'user', text: txt }]);
     setIsAiAnswering(true);
     sendAICommandRequest(txt)
@@ -329,7 +329,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
       })
       .catch(() => {})
       .finally(() => setIsAiAnswering(false));
-  };
+  }, []);
 
   // LOGIN / REGISTER GATES
   if (!isAuthenticated) {

@@ -1,0 +1,68 @@
+This is my website workflow along with a demo mode 
+You are helping build my PromptWars Challenge 4 project.
+
+Project: FIFA World Cup 2026 Smart Stadium & Tournament Operations Platform.
+
+Stack:
+- React + TypeScript + Vite
+- Firebase Authentication (Email/Password)
+- Cloud Firestore
+- Gemini API
+- n8n AI automation
+- Tailwind CSS
+
+IMPORTANT:
+Do not redesign the UI, pages, routing, animations, colors, or styling. Only improve functionality, architecture, security, performance, accessibility, code quality, and bug fixes.
+
+Roles:
+1. Admin
+2. Volunteer
+3. Fan
+
+Workflow:
+
+• Firestore starts completely empty.
+• Only one Admin account exists initially.
+• Fans register themselves using Firebase Authentication.
+• Fan profile is automatically stored in Firestore with a unique generated seat number.
+• Fans can report issues, order food, request emergency help, use AI chat, and indoor navigation.
+• All fan actions are stored in Firestore and update in real time.
+
+Admin:
+• Logs in using Firebase Authentication.
+• Views live analytics, logistics, crowd data, food orders, issue reports, emergency requests, and volunteer activity.
+• Creates volunteer accounts from the dashboard using Name + Email + Password.
+• Volunteer creation should automatically create both the Firebase Authentication user and the Firestore profile.
+• Admin should never manually edit Firestore.
+
+Volunteer:
+• Logs in using Firebase Authentication.
+• Dashboard is initially empty.
+• Receives live fan issues, food orders, emergency requests, and assigned tasks.
+• Can update task status in real time.
+
+Realtime:
+Use Firestore onSnapshot() so Fan, Volunteer, and Admin dashboards stay synchronized automatically.
+
+AI:
+Gemini powers the AI assistant.
+n8n handles AI workflow routing through webhooks.
+
+Current Goal:
+Help me fix bugs, improve the architecture, optimize performance, strengthen security, improve Firebase integration, and make the application production-ready while preserving the existing UI and workflow.
+The factors of evaluation are 
+Code quality 
+How clean readable and well structured the submitted code is 
+Security 
+Wether the code follows safe practices and avoid common vulnerabilities 
+Efficiency 
+How well the code uitilises resources like time and memory 
+Testing 
+How easily the code can be tested validated and maintained over time 
+Accessibility 
+How usable the solution is for diverse users and environments 
+Problem statement allignment 
+This measures how accurately your submission targets the root challenge,user,and core objectives
+Based on these evaluation factors evaluate each factor for 100 and give overall score 
+Next give file name and contents to copy paste entirely in that file to make my project score 100 for each factor and overall 100 score
+Give me one single prompt to complete my project to complete and reach my goal with replit

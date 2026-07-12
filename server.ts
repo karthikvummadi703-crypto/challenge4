@@ -197,7 +197,8 @@ Answer the operator's question concisely (2-4 sentences), in character as a stad
       const result = await genAI.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: stadiumContext,
-      });
+        config: { abortSignal: AbortSignal.timeout(12_000) },
+      } as any);
 
       const aiResponse = result.text?.trim();
       if (aiResponse) {

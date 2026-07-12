@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'motion/react';
 import { Activity } from 'lucide-react';
 import Antigravity from './Antigravity';
 import BlurText from './BlurText';
@@ -20,6 +20,15 @@ const TOTAL_DURATION_MS = STEPS.reduce((s, st) => s + st.duration, 0);
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+
+  // Respect the OS-level "reduce motion" accessibility preference.
+  // When active: skip the animated splash and go straight to the app.
+  const prefersReducedMotion = useReducedMotion();
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      onComplete();
+    }
+  }, [prefersReducedMotion, onComplete]);
 
   useEffect(() => {
     let currentStep = 0;
