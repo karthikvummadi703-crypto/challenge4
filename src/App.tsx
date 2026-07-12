@@ -66,11 +66,15 @@ function AppContent() {
       {isDemoMode && <DemoBadge onExit={handleLogout} />}
 
       {/* Global Stadium Background — decorative, hidden from assistive technology.
-          isolate + translateZ(0) forces this onto its own GPU compositing layer
-          so it can never be squashed together with the foreground content layer —
-          on some Chrome/Android GPU drivers, a full-viewport `filter: blur()`
-          sharing a layer with sharp text can visibly "bleed" blur onto that text
-          (a real compositor bug, not a CSS mistake). Isolating it fixes that. */}
+          `.gpu-blur-layer` gives this its own stacking context + paint
+          containment so it can never be squashed together with the
+          foreground content layer — on some Chrome/Android GPU drivers, a
+          full-viewport `filter: blur()` sharing a layer with sharp text can
+          visibly "bleed" blur onto that text (a real compositor bug, not a
+          CSS mistake). Note: this intentionally does NOT force a
+          `translateZ(0)`-style permanent GPU compositing layer — doing so
+          on rounded/overflow-hidden cards elsewhere caused a *different*
+          blur artifact (see .gpu-blur-layer in index.css). */}
       <div
         aria-hidden="true"
         className="gpu-blur-layer fixed inset-0 pointer-events-none bg-cover bg-center bg-no-repeat transition-all duration-1000"

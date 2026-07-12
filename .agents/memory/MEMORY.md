@@ -5,3 +5,4 @@
 - [Firebase emulator setup](firebase-emulator-setup.md) — firebase-tools Firestore emulator needs JDK 21+ (17 fails); rules-unit-tests need their own npm script, excluded from default vitest run.
 - [Nexus Demo Mode architecture](nexus-demo-mode-architecture.md) — dashboards route all Firestore calls through dataSource.ts so Demo Mode can swap backends without forking components.
 - [Nexus admin doc integrity](nexus-admin-doc-integrity.md) — admin login checks only doc existence in Firestore `admins/{uid}`; manual console edits bypass rules and can silently grant admin to any account. Always run `npm run verify:admin` first when "wrong account can log in as admin" is reported.
+- [GPU blur isolation gotcha](gpu-blur-isolation-gotcha.md) — isolating blur layers with translateZ(0)/will-change can itself reintroduce blur on rounded+overflow-hidden cards; use isolation+contain:paint only.

@@ -76,19 +76,28 @@
 
 /* ── GPU blur isolation ──────────────────────────────────────────────────
    Apply to any element carrying `blur-[...]`, `backdrop-blur-*`, or a
-   `filter`/`backdrop-filter: blur()` rule. Promotes the element onto its
-   own compositor layer so the blur can never be squashed together with —
-   and visually bleed onto — sharp foreground content (a real Chrome/
-   Android GPU-driver compositing bug, not a CSS authoring mistake).
-   Always pair with a foreground wrapper using `.gpu-blur-foreground`
-   (position: relative; z-index: 1) so text/icons/buttons render in their
-   own crisp layer above the blur. */
+   `filter`/`backdrop-filter: blur()` rule. `isolation: isolate` gives the
+   element its own stacking context and `contain: paint` clips its paint to
+   its own box — together these stop a blur from being squashed into the
+   same paint/stacking context as sibling foreground content, which is what
+   caused blur to visually "bleed" onto crisp text on some Chrome/Android
+   GPU drivers.
+
+   Deliberately does NOT force `transform: translateZ(0)` / `will-change:
+   transform` / `backface-visibility: hidden`. That older "GPU hack" triad
+   permanently promotes the element to its own compositor layer, and on
+   cards that combine `border-radius` + `overflow-hidden` + a blur filter
+   (e.g. the seat-map card) Chromium/Android rasterizes that layer's rounded
+   clip at a slightly different pixel grid than the rest of the page,
+   softening the *whole* layer — including the sharp SVG/text painted
+   inside it. That is what kept the Fan Dashboard's seat-map card blurry
+   after the first isolation pass: isolation/containment fixed the bleed,
+   but the leftover forced compositing layer reintroduced blur through a
+   different mechanism. Static isolation without forced compositing avoids
+   both problems. */
 .gpu-blur-layer {
   isolation: isolate;
-  transform: translateZ(0);
-  contain: strict;
-  backface-visibility: hidden;
-  will-change: transform;
+  contain: paint;
   z-index: 0;
 }
 
