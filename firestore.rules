@@ -34,6 +34,20 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
     }
 
+    // True when the authenticated user is the fan who owns the record
+    // (document must have a fanUid field matching the caller's uid)
+    function isFanOwner() {
+      return isAuthenticated()
+        && resource != null
+        && resource.data.fanUid == request.auth.uid;
+    }
+
+    // Validates that a newly created record's fanUid matches the caller
+    function creatingAsself() {
+      return isAuthenticated()
+        && request.resource.data.fanUid == request.auth.uid;
+    }
+
     // ── Role Profiles ─────────────────────────────────────────────────────────
 
     // SECURITY: role documents (admins/volunteers) must never be self-creatable —
@@ -67,34 +81,37 @@ service cloud.firestore {
 
     // ── Operational Collections ───────────────────────────────────────────────
 
-    // Tasks: visible to all logged-in users; volunteers & admins may update
+    // Tasks: volunteers and admins see all tasks (needed to claim/complete them);
+    // a fan can only read tasks they originated. Anyone authenticated can create
+    // a task (fans via food/medical/issue flows, volunteers via the admin panel).
     match /tasks/{taskId} {
-      allow read:   if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read:   if isVolunteer() || isAdmin() || isFanOwner();
+      allow create: if isAuthenticated() && creatingAsself();
       allow update: if isVolunteer() || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Food orders: fans & anyone authenticated can create; volunteers & admins can update
+    // Food orders: fans see only their own order; volunteers/admins see all.
+    // A fan must supply their own uid when creating — enforced by creatingAsself().
     match /foodOrders/{orderId} {
-      allow read:   if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read:   if isVolunteer() || isAdmin() || isFanOwner();
+      allow create: if isAuthenticated() && creatingAsself();
       allow update: if isVolunteer() || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Emergency requests: any authenticated user can create; volunteers & admins can update
+    // Emergency requests: same ownership model as food orders.
     match /emergencyRequests/{reqId} {
-      allow read:   if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read:   if isVolunteer() || isAdmin() || isFanOwner();
+      allow create: if isAuthenticated() && creatingAsself();
       allow update: if isVolunteer() || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Issue reports: any authenticated user can create; volunteers & admins can update
+    // Issue reports: same ownership model as food orders.
     match /issueReports/{reportId} {
-      allow read:   if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read:   if isVolunteer() || isAdmin() || isFanOwner();
+      allow create: if isAuthenticated() && creatingAsself();
       allow update: if isVolunteer() || isAdmin();
       allow delete: if isAdmin();
     }

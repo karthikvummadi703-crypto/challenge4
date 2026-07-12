@@ -2,8 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// @ts-ignore
-const env = import.meta.env || {};
+const env = import.meta.env;
 
 const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY || env.GOOGLE_API_KEY,

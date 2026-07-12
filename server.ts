@@ -254,6 +254,7 @@ const toSafeCount = (val: unknown): number => {
 app.post('/api/ai/demo-command', demoAiLimiter, async (req: Request, res: Response) => {
   const text = sanitize(req.body.text);
   if (!text) return badRequest(res, 'Command string is required.');
+  if (text.length > 500) return badRequest(res, 'Command too long. Maximum 500 characters.');
 
   const t = req.body.telemetry || {};
   const telemetry: Telemetry = {
@@ -280,6 +281,7 @@ app.post('/api/ai/demo-command', demoAiLimiter, async (req: Request, res: Respon
 app.post('/api/ai/command', requireAuth, async (req: AuthedRequest, res: Response) => {
   const text = sanitize(req.body.text);
   if (!text) return badRequest(res, 'Command string is required.');
+  if (text.length > 500) return badRequest(res, 'Command too long. Maximum 500 characters.');
 
   const telemetry = await getStadiumTelemetry();
 

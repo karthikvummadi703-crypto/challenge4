@@ -179,9 +179,10 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     e.preventDefault();
     const orderedItems = (Object.entries(cart) as [string, number][])
       .filter(([_, qty]) => Number(qty) > 0)
-      .map(([id, qty]) => {
-        const item = foodMenu.find(f => f.id === id)!;
-        return { name: item.name, quantity: Number(qty), price: Number(item.price) };
+      .flatMap(([id, qty]) => {
+        const item = foodMenu.find(f => f.id === id);
+        if (!item) return [];
+        return [{ name: item.name, quantity: Number(qty), price: Number(item.price) }];
       });
 
     if (orderedItems.length === 0) return;
@@ -519,8 +520,8 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
   // LOGGED IN FAN ARENA
   const cartSubtotal = (Object.entries(cart) as [string, number][]).reduce((sum, [id, qty]) => {
-    const item = foodMenu.find(f => f.id === id)!;
-    return sum + (Number(item.price) * Number(qty));
+    const item = foodMenu.find(f => f.id === id);
+    return sum + (item ? Number(item.price) * Number(qty) : 0);
   }, 0);
 
   return (
@@ -531,8 +532,8 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
         <div>
           {/* Fan Avatar details */}
           <div className="p-6 border-b border-slate-800/40 flex items-center space-x-3">
-            <div className="h-9 w-9 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
-              {currentUser?.name[0].toUpperCase()}
+            <div className="h-9 w-9 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm" aria-hidden="true">
+              {currentUser?.name?.[0]?.toUpperCase() ?? '?'}
             </div>
             <div>
               <h2 className="font-sans font-bold text-sm tracking-wider truncate max-w-[140px]">{currentUser?.name}</h2>
@@ -540,36 +541,40 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
             </div>
           </div>
 
-          <nav className="p-4 space-y-1">
+          <nav className="p-4 space-y-1" aria-label="Fan dashboard navigation">
             <button 
               onClick={() => setActiveTab('dashboard')}
+              aria-current={activeTab === 'dashboard' ? 'page' : undefined}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center space-x-3 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold' : 'text-slate-400 hover:text-white'}`}
             >
-              <Compass className="h-4 w-4" />
+              <Compass className="h-4 w-4" aria-hidden="true" />
               <span>Dashboard</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('food')}
+              aria-current={activeTab === 'food' ? 'page' : undefined}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center space-x-3 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer ${activeTab === 'food' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold' : 'text-slate-400 hover:text-white'}`}
             >
-              <Coffee className="h-4 w-4" />
+              <Coffee className="h-4 w-4" aria-hidden="true" />
               <span>Food Ordering</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('medical')}
+              aria-current={activeTab === 'medical' ? 'page' : undefined}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center space-x-3 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer ${activeTab === 'medical' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold' : 'text-slate-400 hover:text-white'}`}
             >
-              <ShieldAlert className="h-4 w-4" />
+              <ShieldAlert className="h-4 w-4" aria-hidden="true" />
               <span>Medical Help</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('issue')}
+              aria-current={activeTab === 'issue' ? 'page' : undefined}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center space-x-3 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer ${activeTab === 'issue' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold' : 'text-slate-400 hover:text-white'}`}
             >
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               <span>Report Issue</span>
             </button>
           </nav>
@@ -731,7 +736,8 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
                   <div className="space-y-3">
                     {(Object.entries(cart) as [string, number][]).filter(([_, q]) => Number(q) > 0).map(([id, qty]) => {
-                      const item = foodMenu.find(f => f.id === id)!;
+                      const item = foodMenu.find(f => f.id === id);
+                      if (!item) return null;
                       return (
                         <div key={id} className="flex items-center justify-between text-xs">
                           <span className="text-slate-300">{item.name} <strong className="text-emerald-400 font-mono">x{qty}</strong></span>
