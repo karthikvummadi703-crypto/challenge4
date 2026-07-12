@@ -99,3 +99,22 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
 
 ## User preferences
 - Preserve the existing dark neon "stadium command center" UI — do not redesign.
+
+## Fixed: unintended accounts could log into the Admin Portal (2026-07-12)
+`npm run verify:admin` found 3 documents in the live Firestore `admins`
+collection instead of the required 1 — all added by hand via the Firebase
+console (which bypasses `firestore.rules` entirely), not through the app or
+`scripts/seedAdmin.ts`. Since admin access is granted purely by the existence
+of a doc at `admins/{uid}` (see `verifyAdminAccess` in
+`src/services/userService.ts`), each stray doc gave full Organizer Dashboard
+access to whichever account's UID it was keyed to:
+- `3Nztt8sbKlbpKcTQWoY6ZfeIx2h2` (karthikvummadi703@gmail.com) — the real admin, kept.
+- `Firebase uid` — a literal placeholder string mistakenly used as a doc ID, deleted (junk, matched no real account).
+- `MgbxdWoCuKYzbKq6YwvEsBufd1B3` (volenteer9@gmail.com) — a volunteer account that had been given admin rights by mistake, deleted. This was the actual login bug the user hit.
+
+Remediation: deleted the 2 stray documents via the Admin SDK, normalized the
+remaining doc's field names to lowercase (`email`, not `Email`), and
+re-ran `npm run verify:admin`, which now reports exactly 1 admin document.
+No application code changed — the bug was bad Firestore data, not faulty
+logic. A follow-up task was filed to add an automated/recurring
+`verify:admin` check so a stray console edit is caught quickly next time.
