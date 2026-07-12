@@ -20,6 +20,37 @@ interface FanDashboardProps {
   stadiumBg: string;
 }
 
+/** Static food menu — defined outside the component so it is never recreated on re-render. */
+const FOOD_MENU = [
+  { id: 'item-1', name: 'Veg Burger',     price: 6.99, category: 'Burgers',   image: '🍔' },
+  { id: 'item-2', name: 'Chicken Burger', price: 7.99, category: 'Burgers',   image: '🍔' },
+  { id: 'item-3', name: 'French Fries',   price: 3.49, category: 'Snacks',    image: '🍟' },
+  { id: 'item-4', name: 'Coke',           price: 2.49, category: 'Beverages', image: '🥤' },
+] as const;
+
+/** Queries Firestore to find an unused seat number. Pure function — no component state. */
+async function generateUniqueSeatNumber(): Promise<string> {
+  const letters = ['A', 'B', 'C', 'VIP'] as const;
+  let attempts = 0;
+  while (attempts < 100) {
+    const letter = letters[Math.floor(Math.random() * letters.length)];
+    const numberPart = letter === 'VIP'
+      ? String(Math.floor(Math.random() * 50) + 1).padStart(3, '0')
+      : String(Math.floor(Math.random() * 400) + 1).padStart(3, '0');
+    const seat = `${letter}-${numberPart}`;
+    try {
+      const q = query(collection(db, 'fans'), where('seatNumber', '==', seat));
+      const snap = await getDocs(q);
+      if (snap.empty) return seat;
+    } catch {
+      // Firestore unavailable (demo mode path) — assume the seat is unique
+      return seat;
+    }
+    attempts++;
+  }
+  return `A-${Math.floor(Math.random() * 400) + 100}`;
+}
+
 export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps) {
   const { user, profile, role, signUpFan, loginUser, logoutUser, error, setError, loading } = useAuth();
 
@@ -50,35 +81,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     seatNumber: profile?.seatNumber || seatNumber
   } : null);
 
-  const generateUniqueSeatNumber = async (): Promise<string> => {
-    const letters = ['A', 'B', 'C', 'VIP'];
-    let attempts = 0;
-    while (attempts < 100) {
-      const letter = letters[Math.floor(Math.random() * letters.length)];
-      let numberPart = "";
-      if (letter === 'VIP') {
-        numberPart = String(Math.floor(Math.random() * 50) + 1).padStart(3, '0');
-      } else {
-        numberPart = String(Math.floor(Math.random() * 400) + 1).padStart(3, '0');
-      }
-      const seat = `${letter}-${numberPart}`;
-
-      try {
-        const q = query(collection(db, 'fans'), where('seatNumber', '==', seat));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
-          return seat;
-        }
-      } catch (err) {
-        console.error("Firestore query failed, assuming unique:", err);
-        return seat;
-      }
-      attempts++;
-    }
-    return `A-${Math.floor(Math.random() * 400) + 100}`;
-  };
-
-  const handleRegenerateSeat = async () => {
+  const handleRegenerateSeat = useCallback(async () => {
     setIsGeneratingSeat(true);
     try {
       const seat = await generateUniqueSeatNumber();
@@ -89,24 +92,23 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     } finally {
       setIsGeneratingSeat(false);
     }
-  };
+  // generateUniqueSeatNumber is a module-level pure function — no deps needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    if (isRegistering && (!seatNumber || seatNumber === 'A12-24')) {
+    if (isRegistering && !seatNumber) {
       handleRegenerateSeat();
     }
+  // handleRegenerateSeat is stable (useCallback with []); seatNumber is a guard,
+  // not a trigger — we only auto-generate on mount / switching to register mode.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRegistering]);
 
   // Panel Tabs
   const [activeTab, setActiveTab] = useState<'dashboard' | 'food' | 'medical' | 'issue'>('dashboard');
 
-  // Food Menu List
-  const foodMenu = [
-    { id: 'item-1', name: 'Veg Burger', price: 6.99, category: 'Burgers', image: '🍔' },
-    { id: 'item-2', name: 'Chicken Burger', price: 7.99, category: 'Burgers', image: '🍔' },
-    { id: 'item-3', name: 'French Fries', price: 3.49, category: 'Snacks', image: '🍟' },
-    { id: 'item-4', name: 'Coke', price: 2.49, category: 'Beverages', image: '🥤' }
-  ];
+  // Food menu is defined outside the component as FOOD_MENU (see top of file)
 
   // Cart State
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -166,7 +168,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     const orderedItems = (Object.entries(cart) as [string, number][])
       .filter(([_, qty]) => Number(qty) > 0)
       .flatMap(([id, qty]) => {
-        const item = foodMenu.find(f => f.id === id);
+        const item = FOOD_MENU.find(f => f.id === id);
         if (!item) return [];
         return [{ name: item.name, quantity: Number(qty), price: Number(item.price) }];
       });
@@ -506,7 +508,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
   // LOGGED IN FAN ARENA
   const cartSubtotal = (Object.entries(cart) as [string, number][]).reduce((sum, [id, qty]) => {
-    const item = foodMenu.find(f => f.id === id);
+    const item = FOOD_MENU.find(f => f.id === id);
     return sum + (item ? Number(item.price) * Number(qty) : 0);
   }, 0);
 
@@ -673,7 +675,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
                 <h3 className="font-sans font-bold text-sm text-slate-300 uppercase">Available Menu</h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {foodMenu.map((item) => {
+                  {FOOD_MENU.map((item) => {
                     const qty = cart[item.id] || 0;
                     return (
                       <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
@@ -719,7 +721,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
 
                   <div className="space-y-3">
                     {(Object.entries(cart) as [string, number][]).filter(([_, q]) => Number(q) > 0).map(([id, qty]) => {
-                      const item = foodMenu.find(f => f.id === id);
+                      const item = FOOD_MENU.find(f => f.id === id);
                       if (!item) return null;
                       return (
                         <div key={id} className="flex items-center justify-between text-xs">

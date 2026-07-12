@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   UserCheck, ClipboardList, CheckCircle, Navigation, MessageSquare, 
@@ -18,6 +18,13 @@ interface VolunteerDashboardProps {
   onLogout: () => void;
 }
 
+interface DemoVolunteerAccount {
+  id: string;
+  name: string;
+  volunteerId: string;
+  email: string;
+}
+
 export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps) {
   const { user, profile, role, loginUser, logoutUser, error, setError, loading } = useAuth();
   const { isDemoMode, demoRole, demoProfile } = useDemoMode();
@@ -30,7 +37,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   // Available demo accounts loaded from Firestore volunteers collection
-  const [demoAccounts, setDemoAccounts] = useState<any[]>([]);
+  const [demoAccounts, setDemoAccounts] = useState<DemoVolunteerAccount[]>([]);
 
   const currentVolunteer = isVolunteerDemo && demoProfile ? {
     id: demoProfile.uid,
@@ -103,8 +110,8 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
             status: t.status,
             assignedTo: t.assignedTo,
             timestamp: t.timestamp,
-            linkedId: t.linkedId
-          } as any);
+            linkedId: t.linkedId,
+          });
         });
 
         // Sort tasks by timestamp desc
@@ -169,7 +176,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
       });
 
       // Update linked document status
-      const linkedId = (task as any).linkedId;
+      const linkedId = task.linkedId;
       if (linkedId) {
         if (task.type === 'Deliver Food') {
           await updateRecord('foodOrders', linkedId, {
@@ -204,7 +211,7 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
       });
 
       // Update linked document status
-      const linkedId = (task as any).linkedId;
+      const linkedId = task.linkedId;
       if (linkedId) {
         if (task.type === 'Deliver Food') {
           await updateRecord('foodOrders', linkedId, {
@@ -598,9 +605,11 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowAIChat(!showAIChat)}
+          aria-label={showAIChat ? 'Close route guide assistant' : 'Open route guide assistant'}
+          aria-expanded={showAIChat}
           className="h-12 w-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center shadow-xl cursor-pointer z-50 border-2 border-slate-950"
         >
-          <MessageSquare className="h-5 w-5" />
+          <MessageSquare className="h-5 w-5" aria-hidden="true" />
         </motion.button>
       </div>
 

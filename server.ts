@@ -124,9 +124,19 @@ app.get('/api/config', requireAuth, requireAdmin, (_req, res) => res.json(config
 
 app.post('/api/config', requireAuth, requireAdmin, (req: Request, res: Response) => {
   const { n8nWebhookUrl, n8nAiAssistantUrl, useMockAI } = req.body;
-  if (n8nWebhookUrl !== undefined)     config.n8nWebhookUrl     = sanitize(n8nWebhookUrl);
-  if (n8nAiAssistantUrl !== undefined) config.n8nAiAssistantUrl = sanitize(n8nAiAssistantUrl);
-  if (useMockAI !== undefined)         config.useMockAI         = Boolean(useMockAI);
+  const urlPattern = /^https?:\/\/.+/;
+
+  if (n8nWebhookUrl !== undefined) {
+    const url = sanitize(n8nWebhookUrl);
+    if (url && !urlPattern.test(url)) return badRequest(res, 'n8nWebhookUrl must be a valid HTTP/HTTPS URL.');
+    config.n8nWebhookUrl = url;
+  }
+  if (n8nAiAssistantUrl !== undefined) {
+    const url = sanitize(n8nAiAssistantUrl);
+    if (url && !urlPattern.test(url)) return badRequest(res, 'n8nAiAssistantUrl must be a valid HTTP/HTTPS URL.');
+    config.n8nAiAssistantUrl = url;
+  }
+  if (useMockAI !== undefined) config.useMockAI = Boolean(useMockAI);
   res.json({ message: 'Configuration updated.', config });
 });
 

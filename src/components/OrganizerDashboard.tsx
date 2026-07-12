@@ -54,7 +54,6 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
 
   // Volunteer State
   const [volunteersList, setVolunteersList] = useState<Volunteer[]>([]);
-  const [volCount, setVolCount] = useState(45); // matching screenshot default
 
   // Matches list
   const [matches, setMatches] = useState<Match[]>([]);
@@ -513,28 +512,31 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
           </div>
 
           {/* Nav links */}
-          <nav className="p-4 space-y-1">
+          <nav aria-label="Admin navigation" className="p-4 space-y-1">
             <button 
               onClick={() => setActiveTab('dashboard')}
+              aria-current={activeTab === 'dashboard' ? 'page' : undefined}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center space-x-3 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold' : 'text-slate-400 hover:text-white'}`}
             >
-              <LayoutDashboard className="h-4 w-4" />
+              <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
               <span>Dashboard</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('setup')}
+              aria-current={activeTab === 'setup' ? 'page' : undefined}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center space-x-3 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer ${activeTab === 'setup' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold' : 'text-slate-400 hover:text-white'}`}
             >
-              <PlusCircle className="h-4 w-4" />
+              <PlusCircle className="h-4 w-4" aria-hidden="true" />
               <span>Match Setup</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('volunteers')}
+              aria-current={activeTab === 'volunteers' ? 'page' : undefined}
               className={`w-full text-left px-4 py-3 rounded-xl flex items-center space-x-3 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer ${activeTab === 'volunteers' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold' : 'text-slate-400 hover:text-white'}`}
             >
-              <Users className="h-4 w-4" />
+              <Users className="h-4 w-4" aria-hidden="true" />
               <span>Volunteers</span>
             </button>
           </nav>
@@ -627,7 +629,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Medical Cases</span>
-                  <span className="text-xl font-bold text-white text-red-400">{stats.activeEmergencies}</span>
+                  <span className="text-xl font-bold text-red-400">{stats.activeEmergencies}</span>
                   <span className="text-[9px] text-red-400 font-mono block">Critical Priority</span>
                 </div>
               </div>
@@ -658,10 +660,12 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                       stats.recentAlerts.map((alert: any) => (
                         <div key={alert.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${alert.priority === 'critical' ? 'bg-red-500 animate-ping' : alert.priority === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                            <p className="text-xs text-slate-200 font-semibold">{alert.text}</p>
+                            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${alert.type === 'Emergency' ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
+                            <p className="text-xs text-slate-200 font-semibold">{alert.message}</p>
                           </div>
-                          <span className="text-[10px] font-mono text-slate-500">{alert.time}</span>
+                          <span className="text-[10px] font-mono text-slate-500">
+                            {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
                         </div>
                       ))
                     )}
@@ -999,11 +1003,11 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
                   <table className="w-full text-left font-sans text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-850 text-slate-500 text-[10px] font-mono uppercase tracking-wider">
-                        <th className="py-3 px-2">#</th>
-                        <th className="py-3 px-2">Volunteer Name</th>
-                        <th className="py-3 px-2">Unique Volunteer ID</th>
-                        <th className="py-3 px-2">Role Status</th>
-                        <th className="py-3 px-2 text-right">Actions</th>
+                        <th scope="col" className="py-3 px-2">#</th>
+                        <th scope="col" className="py-3 px-2">Volunteer Name</th>
+                        <th scope="col" className="py-3 px-2">Unique Volunteer ID</th>
+                        <th scope="col" className="py-3 px-2">Role Status</th>
+                        <th scope="col" className="py-3 px-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-850">

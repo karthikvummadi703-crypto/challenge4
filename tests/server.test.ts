@@ -117,6 +117,35 @@ describe('GET/POST /api/config — admin-only', () => {
       .send({ useMockAI: false });
     expect(res.status).toBe(403);
   });
+
+  it('rejects a non-HTTPS n8n webhook URL', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nWebhookUrl: 'ftp://malicious.example.com/hook' });
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts clearing the n8n webhook URL with an empty string', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nWebhookUrl: '' });
+    expect(res.status).toBe(200);
+    expect(res.body.config.n8nWebhookUrl).toBe('');
+  });
+
+  it('accepts a valid HTTPS n8n assistant URL', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nAiAssistantUrl: 'https://my-n8n.example.com/webhook/ai' });
+    expect(res.status).toBe(200);
+    expect(res.body.config.n8nAiAssistantUrl).toBe('https://my-n8n.example.com/webhook/ai');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,6 +163,15 @@ describe('POST /api/ai/command — any authenticated user', () => {
       .post('/api/ai/command')
       .set('Authorization', 'Bearer fake-token')
       .send({ text: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a whitespace-only command string (sanitized to empty)', async () => {
+    authed();
+    const res = await request(app)
+      .post('/api/ai/command')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ text: '   \t\n  ' });
     expect(res.status).toBe(400);
   });
 

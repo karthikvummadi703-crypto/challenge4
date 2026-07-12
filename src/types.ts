@@ -29,6 +29,7 @@ export interface Task {
   status: TaskStatus;
   assignedTo?: string; // Volunteer ID
   timestamp: string;
+  linkedId?: string; // References the originating foodOrder / emergencyRequest / issueReport
 }
 
 export interface FoodItem {
