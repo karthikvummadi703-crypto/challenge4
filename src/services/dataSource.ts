@@ -135,3 +135,19 @@ export async function createRecordWithTask(
   const task = await addRecord('tasks', { ...taskData, linkedId: record.id });
   return { recordId: record.id, taskId: task.id };
 }
+
+/**
+ * Marks the event as published by writing a fresh `systemConfig` record with
+ * `isPublished: true` and a `publishedAt` timestamp.
+ *
+ * OrganizerDashboard has two flows that both need to flip this flag (saving
+ * the first match auto-publishes; the explicit "Publish Event" action also
+ * publishes) — both previously duplicated the exact same `addRecord`
+ * call, so it's centralized here instead.
+ */
+export async function publishSystemConfig(): Promise<{ id: string }> {
+  return addRecord('systemConfig', {
+    isPublished: true,
+    publishedAt: new Date().toISOString(),
+  });
+}

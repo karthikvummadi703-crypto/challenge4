@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 
 // Controllable mock of the Firebase Admin boundary so tests can simulate
@@ -7,12 +7,20 @@ import request from 'supertest';
 let mockUid: string | null = null;
 let mockIsAdmin = false;
 const mockAdminSdkConfigured = true;
+// Toggled by individual tests to simulate a Firestore read failing (e.g. a
+// PERMISSION_DENIED error from security rules, or a transient network error)
+// so we can exercise getStadiumTelemetry's catch-and-fall-back-to-zeros path.
+let telemetryShouldFail = false;
+let telemetryFailureError: Error = new Error('PERMISSION_DENIED: Missing or insufficient permissions.');
 
 vi.mock('../lib/firebaseAdmin', () => ({
   isAdminSdkConfigured: () => mockAdminSdkConfigured,
   getAdminDb: () => ({
     collection: () => ({
-      get: async () => ({ docs: [], size: 0 }),
+      get: async () => {
+        if (telemetryShouldFail) throw telemetryFailureError;
+        return { docs: [], size: 0 };
+      },
     }),
   }),
   requireAuth: (req: import('express').Request & { uid?: string }, res: import('express').Response, next: import('express').NextFunction) => {
@@ -52,6 +60,13 @@ function unauthed() {
   mockUid = null;
   mockIsAdmin = false;
 }
+
+beforeEach(() => {
+  // Every test starts from a known-good telemetry state unless it opts in
+  // to simulating a Firestore failure.
+  telemetryShouldFail = false;
+  telemetryFailureError = new Error('PERMISSION_DENIED: Missing or insufficient permissions.');
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Security headers', () => {
@@ -350,6 +365,197 @@ describe('POST /api/ai/demo-command — unauthenticated with client-supplied tel
       .post('/api/ai/demo-command')
       .send({ text: 'gate congestion' });
     expect(res.status).toBe(200);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('requireJsonContentType — defense-in-depth CSRF middleware', () => {
+  it('rejects a state-changing request declared as form-urlencoded', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .set('Content-Type', 'application/x-www-form-urlencoded')
+      .send('useMockAI=false');
+    expect(res.status).toBe(415);
+  });
+
+  it('rejects a state-changing request with no Content-Type at all', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/ai/command')
+      .set('Authorization', 'Bearer fake-token')
+      .unset('Content-Type')
+      .send();
+    expect(res.status).toBe(415);
+  });
+
+  it('allows GET requests through without a Content-Type check', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .get('/api/config')
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(200);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('getStadiumTelemetry — Firestore failure fallback', () => {
+  it('falls back to zeroed telemetry when Firestore reads throw PERMISSION_DENIED', async () => {
+    authed();
+    telemetryShouldFail = true;
+    telemetryFailureError = new Error('PERMISSION_DENIED: Missing or insufficient permissions.');
+    const res = await request(app)
+      .post('/api/ai/command')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ text: 'available volunteers' });
+    // The request must still succeed with a safe (zeroed) response instead
+    // of crashing or leaking the underlying Firestore error to the client.
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('response');
+    expect(res.body.response).not.toMatch(/PERMISSION_DENIED/);
+  });
+
+  it('falls back to zeroed telemetry when Firestore reads time out with a network error', async () => {
+    authed();
+    telemetryShouldFail = true;
+    telemetryFailureError = new Error('DEADLINE_EXCEEDED: network timeout');
+    const res = await request(app)
+      .post('/api/ai/command')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ text: 'summarize incidents' });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('response');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('answerStadiumQuestion — n8n webhook integration branches', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  async function setN8nAssistantUrl(url: string) {
+    authedAdmin();
+    await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nAiAssistantUrl: url });
+  }
+
+  it('uses the n8n webhook response when it returns 200 OK', async () => {
+    await setN8nAssistantUrl('https://n8n.example.com/webhook/ai');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ output: 'n8n says hello' }),
+    }) as unknown as typeof fetch;
+
+    authed();
+    const res = await request(app)
+      .post('/api/ai/command')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ text: 'hello there' });
+    expect(res.status).toBe(200);
+    expect(res.body.response).toBe('n8n says hello');
+    expect(res.body.source).toBe('n8n Webhook');
+
+    // Restore to empty so later tests in this file aren't affected.
+    await setN8nAssistantUrl('');
+  });
+
+  it('falls back to the local engine when the n8n webhook returns a non-OK status', async () => {
+    await setN8nAssistantUrl('https://n8n.example.com/webhook/ai');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    }) as unknown as typeof fetch;
+
+    authed();
+    const res = await request(app)
+      .post('/api/ai/command')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ text: 'available volunteers' });
+    expect(res.status).toBe(200);
+    expect(res.body.source).not.toBe('n8n Webhook');
+    expect(res.body.response.toLowerCase()).toMatch(/volunteer/i);
+
+    await setN8nAssistantUrl('');
+  });
+
+  it('falls back to the local engine when the n8n webhook is unreachable (network failure)', async () => {
+    await setN8nAssistantUrl('https://n8n.example.com/webhook/ai');
+    global.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED')) as unknown as typeof fetch;
+
+    authed();
+    const res = await request(app)
+      .post('/api/ai/command')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ text: 'food orders' });
+    expect(res.status).toBe(200);
+    expect(res.body.source).not.toBe('n8n Webhook');
+
+    await setN8nAssistantUrl('');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Race conditions — rapid repeated / double-submitted requests', () => {
+  it('handles two concurrent identical POST /api/ai/command requests independently', async () => {
+    authed();
+    const [res1, res2] = await Promise.all([
+      request(app)
+        .post('/api/ai/command')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ text: 'gate congestion' }),
+      request(app)
+        .post('/api/ai/command')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ text: 'gate congestion' }),
+    ]);
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    expect(res1.body.response).toBe(res2.body.response);
+  });
+
+  it('handles a rapid double-submit of POST /api/config without corrupting state', async () => {
+    authedAdmin();
+    const [res1, res2] = await Promise.all([
+      request(app)
+        .post('/api/config')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ n8nWebhookUrl: 'https://race-1.example.com/hook' }),
+      request(app)
+        .post('/api/config')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ n8nWebhookUrl: 'https://race-2.example.com/hook' }),
+    ]);
+    // Neither request should crash or corrupt the shared config object —
+    // exactly one of the two submitted URLs must "win" and be persisted.
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    const finalRead = await request(app)
+      .get('/api/config')
+      .set('Authorization', 'Bearer fake-token');
+    expect(['https://race-1.example.com/hook', 'https://race-2.example.com/hook'])
+      .toContain(finalRead.body.n8nWebhookUrl);
+
+    // Clean up so later tests start from a known-empty webhook URL.
+    await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nWebhookUrl: '' });
+  });
+
+  it('handles rapid double-submit of the demo AI command endpoint without crashing', async () => {
+    const [res1, res2] = await Promise.all([
+      request(app).post('/api/ai/demo-command').send({ text: 'medical emergency' }),
+      request(app).post('/api/ai/demo-command').send({ text: 'medical emergency' }),
+    ]);
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
   });
 });
 

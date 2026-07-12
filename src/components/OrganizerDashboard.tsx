@@ -11,7 +11,7 @@ import { useAuth } from '../context/authContext';
 import { adminCreateVolunteer, verifyAdminAccess } from '../services/userService';
 import { getFriendlyErrorMessage } from '../services/authService';
 import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
-import { subscribeCollection, addRecord, deleteRecord } from '../services/dataSource';
+import { subscribeCollection, addRecord, deleteRecord, publishSystemConfig } from '../services/dataSource';
 import { useDemoMode } from '../context/demoModeContext';
 import { useModalA11y } from '../hooks/useModalA11y';
 
@@ -280,10 +280,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       });
 
       // Update the system configuration to mark published
-      await addRecord('systemConfig', {
-        isPublished: true,
-        publishedAt: new Date().toISOString()
-      });
+      await publishSystemConfig();
 
       setMatchSaveSuccess(true);
       setTimeout(() => setMatchSaveSuccess(false), 3000);
@@ -366,10 +363,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   // Publish Event Handler
   const handlePublishEvent = async () => {
     try {
-      await addRecord('systemConfig', {
-        isPublished: true,
-        publishedAt: new Date().toISOString()
-      });
+      await publishSystemConfig();
       setIsPublished(true);
       setShowPublishSuccessModal(true);
     } catch (e) {

@@ -48,6 +48,7 @@ const {
   updateRecord,
   deleteRecord,
   createRecordWithTask,
+  publishSystemConfig,
 } = await import('../src/services/dataSource');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,6 +232,39 @@ describe('createRecordWithTask', () => {
 
     // Only the (failed) primary-record write should have been attempted.
     expect(mockAddDoc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('publishSystemConfig', () => {
+  beforeEach(() => {
+    setDemoModeActive(false);
+    vi.clearAllMocks();
+  });
+
+  it('writes an isPublished:true systemConfig record via Firestore when demo mode is off', async () => {
+    mockAddDoc.mockResolvedValueOnce({ id: 'config-1' });
+    const result = await publishSystemConfig();
+    expect(mockAddDoc).toHaveBeenCalledTimes(1);
+    const [, data] = mockAddDoc.mock.calls[0] as [unknown, Record<string, unknown>];
+    expect(data.isPublished).toBe(true);
+    expect(typeof data.publishedAt).toBe('string');
+    expect(result).toEqual({ id: 'config-1' });
+  });
+
+  it('routes through the demo store when demo mode is on', async () => {
+    setDemoModeActive(true);
+    mockAddDemoDoc.mockReturnValueOnce({ id: 'demo-config-1' });
+    const result = await publishSystemConfig();
+    expect(mockAddDemoDoc).toHaveBeenCalledTimes(1);
+    expect(mockAddDoc).not.toHaveBeenCalled();
+    const [, data] = mockAddDemoDoc.mock.calls[0] as [unknown, Record<string, unknown>];
+    expect(data.isPublished).toBe(true);
+    expect(result).toEqual({ id: 'demo-config-1' });
+  });
+
+  it('propagates an error when the underlying Firestore write fails', async () => {
+    mockAddDoc.mockRejectedValueOnce(new Error('PERMISSION_DENIED'));
+    await expect(publishSystemConfig()).rejects.toThrow('PERMISSION_DENIED');
   });
 });
 
