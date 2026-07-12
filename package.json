@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npx tsx server.ts",
+    "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
@@ -15,11 +15,12 @@
     "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/firestoreRules.test.ts\""
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
+    "@google/genai": "^2.11.0",
     "@react-three/fiber": "^9.6.1",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
+    "drizzle-zod": "^0.8.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",
     "firebase": "^12.16.0",
@@ -28,10 +29,14 @@
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "ogl": "^1.0.11",
+    "p-limit": "^7.3.0",
+    "p-retry": "^7.1.1",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "three": "^0.185.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "zod": "^4.4.3",
+    "zod-validation-error": "^5.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
