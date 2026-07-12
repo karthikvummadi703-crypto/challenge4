@@ -707,18 +707,20 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
                         <div className="flex items-center space-x-2.5">
                           <button 
                             type="button"
+                            aria-label={`Remove one ${item.name}`}
                             onClick={() => updateCartQty(item.id, -1)}
                             className="p-1 rounded-md bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white cursor-pointer"
                           >
-                            <Minus className="h-3.5 w-3.5" />
+                            <Minus className="h-3.5 w-3.5" aria-hidden="true" />
                           </button>
-                          <span className="text-sm font-bold font-mono text-white w-4 text-center">{qty}</span>
+                          <span className="text-sm font-bold font-mono text-white w-4 text-center" aria-label={`${qty} ${item.name} in cart`}>{qty}</span>
                           <button 
                             type="button"
+                            aria-label={`Add one ${item.name}`}
                             onClick={() => updateCartQty(item.id, 1)}
                             className="p-1 rounded-md bg-slate-950 border border-slate-800 hover:border-slate-750 text-slate-400 hover:text-white cursor-pointer animate-none"
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                           </button>
                         </div>
                       </div>
@@ -849,8 +851,8 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
               <h3 className="font-sans font-bold text-sm text-white uppercase border-b border-slate-800 pb-2">Issue Ticket details</h3>
 
               <div>
-                <label className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Category</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <span id="issue-category-label" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-2">Category</span>
+                <div role="group" aria-labelledby="issue-category-label" className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {issueCategories.map((cat) => (
                     <button
                       key={cat}

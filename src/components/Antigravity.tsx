@@ -220,7 +220,7 @@ const AntigravityInner: React.FC<AntigravityProps> = ({
   });
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined as any, undefined as any, count]}>
+    <instancedMesh ref={meshRef} args={[undefined as THREE.BufferGeometry | undefined, undefined as THREE.Material | undefined, count]}>
       {particleShape === 'capsule' && <capsuleGeometry args={[0.1, 0.4, 4, 8]} />}
       {particleShape === 'sphere' && <sphereGeometry args={[0.2, 16, 16]} />}
       {particleShape === 'box' && <boxGeometry args={[0.3, 0.3, 0.3]} />}

@@ -100,14 +100,14 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
       const unsubscribe = subscribeCollection('tasks', (snapshot) => {
         const dataList: Task[] = [];
         snapshot.forEach((docSnap) => {
-          const t = docSnap.data();
+          const t = docSnap.data() as Record<string, string>;
           dataList.push({
             id: docSnap.id,
-            type: t.type,
+            type: t.type as Task['type'],
             details: t.details,
             seatNumber: t.seatNumber,
-            priority: t.priority,
-            status: t.status,
+            priority: t.priority as Task['priority'],
+            status: t.status as Task['status'],
             assignedTo: t.assignedTo,
             timestamp: t.timestamp,
             linkedId: t.linkedId,

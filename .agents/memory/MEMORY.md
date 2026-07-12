@@ -1,5 +1,6 @@
 - [Volunteer Login Root Cause Fix](volunteer-login-fix.md) — three root causes: PERMISSION_DENIED propagation, wrong Firebase project in adminCreateVolunteer, missing Firestore rules for 6 collections.
-- [Test Suite](test-suite.md) — 24 vitest tests in tests/server.test.ts; run with npm test. All pass. Vitest config in vitest.config.ts.
+- [Test Suite](test-suite.md) — 225 tests across 12 files; run with npm test. All pass. New files: demoStore, apiClient, userService; vi.hoisted() needed for mocks that reference module-level vars.
+- [Hackathon score improvements](hackathon-score-improvements.md) — changes made to push Code Quality/Testing/Accessibility toward 99; key patterns: Record<string,unknown> instead of any, vi.hoisted for mock factories, Firestore snap.exists() is a method not a property.
 - [Nexus AI project quirks](nexus-ai-project-quirks.md) — imported repo needs VITE_FIREBASE_API_KEY + GEMINI_API_KEY secrets; server.ts still has legacy in-memory REST endpoints alongside Firestore.
 - [Nexus Lighthouse optimizations](nexus-lighthouse-optimizations.md) — 6 files changed to push Performance/Accessibility/Best Practices/SEO toward 100; key: Google Fonts moved from CSS @import to HTML link, vendor code-splitting in vite.config, skip-link + focus-visible CSS, full SEO meta in index.html, favicon.svg added, SplashScreen aria-roles.
 - [Firebase emulator setup](firebase-emulator-setup.md) — firebase-tools Firestore emulator needs JDK 21+ (17 fails); rules-unit-tests need their own npm script, excluded from default vitest run.

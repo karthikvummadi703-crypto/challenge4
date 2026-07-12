@@ -279,11 +279,11 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
       <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-slate-900/40 text-[10px] text-slate-500 font-medium">
         <span>© 2026 NEXUS AI. All rights reserved. FIFA 2026 stadium proof of concept.</span>
         <div className="flex space-x-4 mt-2 sm:mt-0 font-mono">
-          <a href="#" className="hover:text-emerald-400 transition-colors">COMPLIANCE</a>
-          <span>•</span>
-          <a href="#" className="hover:text-emerald-400 transition-colors">INTELLIGENCE SLA</a>
-          <span>•</span>
-          <a href="#" className="hover:text-emerald-400 transition-colors">n8n FLOW SCHEMA</a>
+          <a href="#landing-page-root" aria-label="Compliance documentation" className="hover:text-emerald-400 transition-colors">COMPLIANCE</a>
+          <span aria-hidden="true">•</span>
+          <a href="#landing-page-root" aria-label="Intelligence SLA documentation" className="hover:text-emerald-400 transition-colors">INTELLIGENCE SLA</a>
+          <span aria-hidden="true">•</span>
+          <a href="#landing-page-root" aria-label="n8n flow schema documentation" className="hover:text-emerald-400 transition-colors">n8n FLOW SCHEMA</a>
         </div>
       </footer>
 

@@ -71,7 +71,7 @@ function StadiumSeatMap({
       <div className="flex items-center justify-between z-10">
         <div>
           <span className="text-xs font-semibold tracking-widest text-emerald-400 uppercase">Estádio do Nexus</span>
-          <h4 className="text-sm font-medium text-white">Live Seating & Telemetry</h4>
+          <p className="text-sm font-medium text-white">Live Seating &amp; Telemetry</p>
         </div>
         {showHeatmap && (
           <div className="flex items-center space-x-1.5 bg-rose-950/40 border border-rose-800/30 px-2.5 py-1 rounded-full">

@@ -27,7 +27,7 @@ export type DemoCollectionName =
   | 'matches'
   | 'systemConfig';
 
-type DemoDoc = Record<string, any> & { id: string };
+type DemoDoc = Record<string, unknown> & { id: string };
 
 type Listener = (docs: DemoDoc[]) => void;
 
@@ -158,11 +158,13 @@ export function subscribeDemo(collectionName: DemoCollectionName, cb: Listener):
   return () => listeners[collectionName].delete(cb);
 }
 
+/** Returns the current snapshot of all documents in a demo collection without subscribing. */
 export function getDemoDocs(collectionName: DemoCollectionName): DemoDoc[] {
   return collections[collectionName] || [];
 }
 
-export function addDemoDoc(collectionName: DemoCollectionName, data: Record<string, any>): { id: string } {
+/** Appends a new document to a demo collection and notifies all subscribers. Returns the generated id. */
+export function addDemoDoc(collectionName: DemoCollectionName, data: Record<string, unknown>): { id: string } {
   const id = `demo-${collectionName}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const doc: DemoDoc = { id, ...data };
   collections[collectionName] = [...(collections[collectionName] || []), doc];
@@ -172,7 +174,8 @@ export function addDemoDoc(collectionName: DemoCollectionName, data: Record<stri
   return { id };
 }
 
-export function updateDemoDoc(collectionName: DemoCollectionName, id: string, data: Record<string, any>) {
+/** Merges `data` into the matching document and notifies subscribers. No-op when `id` does not exist. */
+export function updateDemoDoc(collectionName: DemoCollectionName, id: string, data: Record<string, unknown>) {
   collections[collectionName] = (collections[collectionName] || []).map((d) =>
     d.id === id ? { ...d, ...data } : d
   );
@@ -181,6 +184,7 @@ export function updateDemoDoc(collectionName: DemoCollectionName, id: string, da
   broadcast({ type: 'mutation', collectionName });
 }
 
+/** Removes the document with the given `id` from a demo collection and notifies subscribers. */
 export function deleteDemoDoc(collectionName: DemoCollectionName, id: string) {
   collections[collectionName] = (collections[collectionName] || []).filter((d) => d.id !== id);
   persist();
@@ -196,6 +200,11 @@ export function resetDemoStore() {
   broadcast({ type: 'reset' });
 }
 
+/**
+ * Clears the session-storage key and reinitialises the in-memory store to seed
+ * data. Unlike `resetDemoStore`, this does NOT broadcast to other tabs — it is
+ * only intended to be called on final demo exit when the session ends.
+ */
 export function clearDemoStore() {
   if (typeof window !== 'undefined') {
     try { window.sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }

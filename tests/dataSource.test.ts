@@ -191,7 +191,8 @@ describe('subscribeCollection — Firestore snapshot adapter', () => {
     const fakeFirestoreSnapshot = { docs: firestoreDocs, size: 2 };
 
     // Capture the onSnapshot callback and invoke it with the fake snapshot.
-    mockOnSnapshot.mockImplementationOnce((_ref: unknown, cb: (snap: typeof fakeFirestoreSnapshot) => void) => {
+    mockOnSnapshot.mockImplementationOnce((...args: unknown[]) => {
+      const cb = args[1] as (snap: typeof fakeFirestoreSnapshot) => void;
       cb(fakeFirestoreSnapshot);
       return mockUnsubscribe;
     });

@@ -115,7 +115,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     const unsubVolunteers = subscribeCollection('volunteers', (snapshot) => {
       const vols: Volunteer[] = [];
       snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
+        const data = docSnap.data() as Record<string, string>;
         vols.push({
           id: docSnap.id,
           name: data.fullName || 'Volunteer',
@@ -198,7 +198,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     const unsubMatches = subscribeCollection('matches', (snapshot) => {
       const matchesList: Match[] = [];
       snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
+        const data = docSnap.data() as Record<string, string>;
         matchesList.push({
           id: docSnap.id,
           stadiumName: data.stadiumName,
@@ -780,7 +780,9 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
 
                 {/* Input action form */}
                 <form onSubmit={handleSendMessageSubmit} className="p-3 bg-slate-950 border-t border-slate-850 flex items-center space-x-2">
+                  <label htmlFor="org-ai-input" className="sr-only">Ask command assistant</label>
                   <input 
+                    id="org-ai-input"
                     type="text" 
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}

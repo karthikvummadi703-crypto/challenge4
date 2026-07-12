@@ -15,15 +15,15 @@ vi.mock('../lib/firebaseAdmin', () => ({
       get: async () => ({ docs: [], size: 0 }),
     }),
   }),
-  requireAuth: (req: any, res: any, next: any) => {
-    const header = req.headers.authorization || '';
+  requireAuth: (req: import('express').Request & { uid?: string }, res: import('express').Response, next: import('express').NextFunction) => {
+    const header = (req.headers.authorization as string) || '';
     if (!header.startsWith('Bearer ') || mockUid === null) {
       return res.status(401).json({ error: 'Missing Authorization bearer token.' });
     }
     req.uid = mockUid;
     next();
   },
-  requireAdmin: (req: any, res: any, next: any) => {
+  requireAdmin: (req: import('express').Request & { uid?: string }, res: import('express').Response, next: import('express').NextFunction) => {
     if (!req.uid) return res.status(401).json({ error: 'Not authenticated.' });
     if (!mockIsAdmin) return res.status(403).json({ error: 'Admin privileges required.' });
     next();

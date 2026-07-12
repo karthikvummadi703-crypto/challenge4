@@ -25,17 +25,18 @@ import {
 let demoModeActive = false;
 
 /** Flipped exclusively by DemoModeContext when the judge enters/exits Demo Mode. */
-export function setDemoModeActive(active: boolean) {
+export function setDemoModeActive(active: boolean): void {
   demoModeActive = active;
 }
 
+/** Returns `true` when Demo Mode is currently active; used by apiClient to route AI calls. */
 export function isDemoModeActive(): boolean {
   return demoModeActive;
 }
 
 interface FakeDocSnapshot {
   id: string;
-  data: () => Record<string, any>;
+  data: () => Record<string, unknown>;
 }
 
 interface FakeQuerySnapshot {
@@ -44,7 +45,7 @@ interface FakeQuerySnapshot {
   forEach: (cb: (doc: FakeDocSnapshot) => void) => void;
 }
 
-function toFakeSnapshot(records: Array<Record<string, any> & { id: string }>): FakeQuerySnapshot {
+function toFakeSnapshot(records: Array<Record<string, unknown> & { id: string }>): FakeQuerySnapshot {
   const docs: FakeDocSnapshot[] = records.map((r) => {
     const { id, ...rest } = r;
     return { id, data: () => rest };
@@ -80,7 +81,7 @@ export function subscribeCollection(
 /** Equivalent of addDoc(collection(db, name), data). */
 export async function addRecord(
   name: DemoCollectionName,
-  data: Record<string, any>
+  data: Record<string, unknown>
 ): Promise<{ id: string }> {
   if (demoModeActive) {
     return addDemoDoc(name, data);
@@ -93,7 +94,7 @@ export async function addRecord(
 export async function updateRecord(
   name: DemoCollectionName,
   id: string,
-  data: Record<string, any>
+  data: Record<string, unknown>
 ): Promise<void> {
   if (demoModeActive) {
     updateDemoDoc(name, id, data);
