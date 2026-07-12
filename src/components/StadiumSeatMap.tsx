@@ -52,7 +52,11 @@ function StadiumSeatMap({
   };
 
   return (
-    <div id="stadium-seat-map-container" className="relative w-full aspect-[5/4] bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-2xl backdrop-blur-md">
+    <div
+      id="stadium-seat-map-container"
+      className="relative w-full aspect-[5/4] bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-2xl backdrop-blur-md isolate"
+      style={{ transform: 'translateZ(0)' }}
+    >
       {/* Background radial glow */}
       <div className="absolute inset-0 bg-radial from-emerald-950/10 via-transparent to-transparent pointer-events-none" />
 

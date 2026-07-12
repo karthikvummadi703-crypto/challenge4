@@ -65,20 +65,32 @@ function AppContent() {
     >
       {isDemoMode && <DemoBadge onExit={handleLogout} />}
 
-      {/* Global Stadium Background — decorative, hidden from assistive technology */}
+      {/* Global Stadium Background — decorative, hidden from assistive technology.
+          isolate + translateZ(0) forces this onto its own GPU compositing layer
+          so it can never be squashed together with the foreground content layer —
+          on some Chrome/Android GPU drivers, a full-viewport `filter: blur()`
+          sharing a layer with sharp text can visibly "bleed" blur onto that text
+          (a real compositor bug, not a CSS mistake). Isolating it fixes that. */}
       <div
         aria-hidden="true"
-        className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
+        className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 isolate"
         style={{
           backgroundImage: `linear-gradient(rgba(2, 4, 8, 0.90), rgba(2, 4, 8, 0.94)), url(${stadiumBg})`,
+          transform: 'translateZ(0)',
         }}
       />
 
-      {/* Global Stadium Glow Effects — decorative */}
-      <div aria-hidden="true" className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-[var(--dynamic-accent)] opacity-10 rounded-full blur-[120px] transition-all duration-700" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[var(--dynamic-accent)] opacity-10 rounded-full blur-[120px] transition-all duration-700" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-[var(--dynamic-accent)] opacity-5 rounded-[100%] blur-[100px] transition-all duration-700" />
+      {/* Global Stadium Glow Effects — decorative. Same GPU-layer isolation as
+          above; these are the heaviest blur radii (100-120px) in the app and
+          the most likely source of any cross-page blur bleed. */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 pointer-events-none z-0 overflow-hidden isolate"
+        style={{ transform: 'translateZ(0)', contain: 'strict' }}
+      >
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-[var(--dynamic-accent)] opacity-10 rounded-full blur-[120px] transition-all duration-700 will-change-transform" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[var(--dynamic-accent)] opacity-10 rounded-full blur-[120px] transition-all duration-700 will-change-transform" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-[var(--dynamic-accent)] opacity-5 rounded-[100%] blur-[100px] transition-all duration-700 will-change-transform" />
       </div>
 
       <AnimatePresence mode="wait">

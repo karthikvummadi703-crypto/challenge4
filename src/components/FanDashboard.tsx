@@ -354,7 +354,7 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
     return (
       <div id="fan-auth-container" className="relative min-h-screen bg-slate-950 flex items-center justify-center p-6 overflow-hidden">
         
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 isolate" style={{ transform: 'translateZ(0)' }}>
           <img src={stadiumBg} alt="stadium bg" className="w-full h-full object-cover opacity-15 filter saturate-50 blur-[2px]" />
           <div className="absolute inset-0 bg-slate-950/80" />
         </div>
