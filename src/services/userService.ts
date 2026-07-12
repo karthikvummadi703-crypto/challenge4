@@ -33,6 +33,32 @@ export interface FanRegistrationDetails {
 
 export type UserRole = 'admin' | 'volunteer' | 'fan';
 
+/** Shared email-format regex (RFC 5322 simplified). */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Throws a descriptive Error when a registration field is invalid. */
+function validateRegistrationFields(fields: {
+  fullName?: string;
+  email?: string;
+  password?: string;
+}): void {
+  if (fields.fullName !== undefined) {
+    const name = fields.fullName.trim();
+    if (!name) throw new Error('Full name is required.');
+    if (name.length > 100) throw new Error('Full name must be 100 characters or fewer.');
+  }
+  if (fields.email !== undefined) {
+    const email = fields.email.trim();
+    if (!email) throw new Error('Email address is required.');
+    if (!EMAIL_RE.test(email)) throw new Error('Please enter a valid email address.');
+    if (email.length > 254) throw new Error('Email address is too long.');
+  }
+  if (fields.password !== undefined) {
+    if (fields.password.length < 6) throw new Error('Password must be at least 6 characters.');
+    if (fields.password.length > 128) throw new Error('Password must be 128 characters or fewer.');
+  }
+}
+
 /** Creates a fan Firestore profile keyed by UID. */
 export const createFanProfile = async (
   uid: string,
@@ -41,6 +67,8 @@ export const createFanProfile = async (
   seatNumber: string = 'A12-24',
   details: FanRegistrationDetails = {}
 ): Promise<void> => {
+  validateRegistrationFields({ fullName, email });
+
   let assignedGate = 'Gate A';
   if (seatNumber.startsWith('B')) assignedGate = 'Gate B';
   else if (seatNumber.startsWith('C')) assignedGate = 'Gate C';
@@ -70,6 +98,7 @@ export const createVolunteerProfile = async (
   email: string,
   assignedGate: string = 'Gate A'
 ): Promise<void> => {
+  validateRegistrationFields({ fullName, email });
   await setDoc(doc(db, 'volunteers', uid), {
     uid,
     fullName: fullName.trim(),
@@ -171,6 +200,53 @@ const findUserDocument = async (uid: string, collectionName: string) => {
   return null;
 };
 
+/**
+ * STRICT admin verification — the ONLY function that should gate admin portal
+ * access. Checks the /admins collection exclusively, with no cross-collection
+ * fallback. If Firestore is unreachable the call throws and the caller must
+ * treat the result as a denial (fail-closed).
+ *
+ * Legacy migration: if the admin doc was stored by email key instead of UID,
+ * this function finds and migrates it to the UID key for future O(1) lookups.
+ */
+export const verifyAdminAccess = async (uid: string, email: string): Promise<boolean> => {
+  // Path 1 — canonical: document keyed by UID (all new accounts)
+  try {
+    const snap = await getDoc(doc(db, 'admins', uid));
+    if (snap.exists()) return true;
+  } catch {
+    // PERMISSION_DENIED or network failure → fail closed
+    return false;
+  }
+
+  const lowerEmail = email.toLowerCase().trim();
+
+  // Path 2 — legacy: document keyed by email string
+  try {
+    const snap = await getDoc(doc(db, 'admins', lowerEmail));
+    if (snap.exists()) {
+      // Migrate to UID key so future logins are O(1)
+      try {
+        await setDoc(doc(db, 'admins', uid), { ...snap.data(), uid, email: lowerEmail }, { merge: true });
+      } catch { /* migration is best-effort */ }
+      return true;
+    }
+  } catch { /* PERMISSION_DENIED → not an admin */ }
+
+  // Path 3 — fallback: query by email field
+  try {
+    const result = await getDocs(query(collection(db, 'admins'), where('email', '==', lowerEmail)));
+    if (!result.empty) {
+      try {
+        await setDoc(doc(db, 'admins', uid), { ...result.docs[0].data(), uid, email: lowerEmail }, { merge: true });
+      } catch { /* migration is best-effort */ }
+      return true;
+    }
+  } catch { /* PERMISSION_DENIED → not an admin */ }
+
+  return false;
+};
+
 /** Determines the role of a Firebase Auth UID by checking all role collections. */
 export const getUserRole = async (uid: string): Promise<UserRole | null> => {
   if (await findUserDocument(uid, 'admins')) return 'admin';
@@ -219,6 +295,7 @@ export const adminCreateVolunteer = async (
   password: string,
   assignedGate: string = 'Gate A'
 ): Promise<void> => {
+  validateRegistrationFields({ fullName, email, password });
   // import.meta.env is always defined in Vite — typed via src/vite-env.d.ts
   const firebaseConfig = {
     apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,

@@ -149,6 +149,38 @@ describe('GET/POST /api/config — admin-only', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Input sanitization edge cases
+describe('POST /api/config — input edge cases', () => {
+  it('rejects a javascript: scheme URL for n8nWebhookUrl', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nWebhookUrl: 'javascript:alert(1)' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a data: URI for n8nAiAssistantUrl', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nAiAssistantUrl: 'data:text/html,<h1>xss</h1>' });
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts an HTTP (non-TLS) webhook URL', async () => {
+    authedAdmin();
+    const res = await request(app)
+      .post('/api/config')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ n8nWebhookUrl: 'http://internal-server.local/hook' });
+    expect(res.status).toBe(200);
+    expect(res.body.config.n8nWebhookUrl).toBe('http://internal-server.local/hook');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('POST /api/ai/command — any authenticated user', () => {
   beforeEach(unauthed);
 

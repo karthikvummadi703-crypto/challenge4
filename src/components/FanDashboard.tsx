@@ -143,17 +143,32 @@ export default function FanDashboard({ onLogout, stadiumBg }: FanDashboardProps)
   }, [chatLogs]);
 
   // Auth Handler
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Client-side validation before touching Firebase
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !EMAIL_RE.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    if (isRegistering) {
+      if (!name.trim()) { setError('Full name is required.'); return; }
+      if (!seatNumber)  { setError('Seat number is required.'); return; }
+    }
+
     setIsSubmitting(true);
     try {
       if (isRegistering) {
-        if (!name || !email || !password || !seatNumber) return;
-        await signUpFan(name, email, password, seatNumber, { phone, country, preferredLanguage, favoriteTeam });
+        await signUpFan(name, trimmedEmail, password, seatNumber, { phone, country, preferredLanguage, favoriteTeam });
       } else {
-        if (!email || !password) return;
-        await loginUser(email, password, 'fan');
+        await loginUser(trimmedEmail, password, 'fan');
       }
     } catch (err) {
       console.error(err);

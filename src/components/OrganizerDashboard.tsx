@@ -261,10 +261,23 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   };
 
   // Add Volunteer Handler
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const handleAddVolunteer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newVolunteerName.trim() || !newVolunteerEmail.trim() || !newVolunteerPassword.trim()) {
-      alert("All fields are required to register a volunteer!");
+    const trimmedName  = newVolunteerName.trim();
+    const trimmedEmail = newVolunteerEmail.trim().toLowerCase();
+    const trimmedPwd   = newVolunteerPassword.trim();
+
+    if (!trimmedName || !trimmedEmail || !trimmedPwd) {
+      alert('All fields are required to register a volunteer.');
+      return;
+    }
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      alert('Please enter a valid email address for the volunteer.');
+      return;
+    }
+    if (trimmedPwd.length < 6) {
+      alert('Password must be at least 6 characters.');
       return;
     }
 

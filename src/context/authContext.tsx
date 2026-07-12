@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { getUserRole, getUserProfile, createFanProfile, updateLastLogin, UserProfile, FanRegistrationDetails } from '../services/userService';
+import { getUserRole, getUserProfile, createFanProfile, updateLastLogin, verifyAdminAccess, UserProfile, FanRegistrationDetails } from '../services/userService';
 import { getFriendlyErrorMessage, logout } from '../services/authService';
 
 interface AuthContextType {
@@ -97,6 +97,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
+
+      // ── Admin portal: strict admins-collection check ──────────────────────
+      // This MUST run before getUserRole so that no multi-strategy fallback
+      // can accidentally grant dashboard access to a non-admin Firebase user.
+      // The check is fail-closed: if Firestore is unreachable, access is denied.
+      if (expectedRole === 'admin') {
+        const isAdmin = await verifyAdminAccess(
+          firebaseUser.uid,
+          firebaseUser.email ?? email
+        );
+        if (!isAdmin) {
+          await logout();
+          setUser(null);
+          setProfile(null);
+          setRole(null);
+          const err = new Error(
+            'Access Denied: This email is not registered as an organizer. ' +
+            'Only accounts pre-registered in the admin portal may log in here.'
+          );
+          setError(err.message);
+          throw err;
+        }
+      }
+
       const userRole = await getUserRole(firebaseUser.uid);
 
       if (!userRole) {
