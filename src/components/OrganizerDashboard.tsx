@@ -296,10 +296,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       // Clean up fields and reload list
       setNewVolunteerName('');
       setNewVolunteerEmail('');
-      setNewVolunteerPassword('password123');
+      setNewVolunteerPassword('');
       setNewVolunteerGate('Gate A');
       
-      await loadStatsAndData();
+      // onSnapshot subscriptions update the volunteer list automatically
     } catch (err: any) {
       console.error("Failed to register volunteer:", err);
       alert(err.message || "Failed to register volunteer. Ensure email is unique!");
@@ -313,7 +313,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     try {
       // Delete volunteer from Firestore volunteers collection
       await deleteRecord('volunteers', id);
-      await loadStatsAndData();
+      // onSnapshot subscription updates the list automatically
     } catch (e) {
       console.error("Failed to remove volunteer:", e);
     }
