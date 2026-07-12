@@ -6,6 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+attached_assets/
 
 # Firebase / GCP service account credentials must NEVER be committed.
 # Use the FIREBASE_SERVICE_ACCOUNT_KEY secret instead (see README.md).

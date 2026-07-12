@@ -89,5 +89,13 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
   (resets on restart) plus mirrored to Firestore `systemConfig`.
 - Other `VITE_FIREBASE_*` values and n8n URLs are already set as shared env vars.
 
+## Replit setup (import checklist)
+1. `npm install` — installs all Node dependencies (run once after import).
+2. Workflow **Start application** runs `npm run dev` → Express + Vite on port 5000.
+3. Production build: `npm run build` → Vite client bundle + esbuild server to `dist/`.
+4. Deployment target: **autoscale** (`node dist/server.cjs`), configured in `.replit`.
+5. `VITE_FIREBASE_*` shared env vars already set in `.replit [userenv.shared]`.
+6. Set `GEMINI_API_KEY` secret for live AI chat (app falls back gracefully without it).
+
 ## User preferences
 - Preserve the existing dark neon "stadium command center" UI — do not redesign.
