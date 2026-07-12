@@ -24,6 +24,7 @@ function DashboardSkeleton() {
 }
 import SplashScreen from './components/SplashScreen';
 import DemoBadge from './components/DemoBadge';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './context/authContext';
 import { DemoModeProvider, useDemoMode, DemoRole } from './context/demoModeContext';
 
@@ -160,10 +161,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DemoModeProvider>
-        <AppContent />
-      </DemoModeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <DemoModeProvider>
+          <AppContent />
+        </DemoModeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

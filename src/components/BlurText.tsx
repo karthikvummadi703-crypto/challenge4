@@ -1,12 +1,26 @@
 import { motion } from 'motion/react';
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 
-const buildKeyframes = (from: any, steps: any[]) => {
-  const keys = new Set([...Object.keys(from), ...steps.flatMap(s => Object.keys(s))]);
+/** A single animation keyframe — CSS/transform property bag. */
+type AnimationProperties = Record<string, string | number>;
 
-  const keyframes: Record<string, any[]> = {};
-  keys.forEach(k => {
-    keyframes[k] = [from[k], ...steps.map(s => s[k])];
+/**
+ * Merges a `from` snapshot and an array of `to` snapshots into the
+ * `{ [key]: [v0, v1, …] }` shape that Framer Motion expects for keyframe
+ * animations.
+ */
+const buildKeyframes = (
+  from: AnimationProperties,
+  steps: AnimationProperties[]
+): Record<string, Array<string | number | undefined>> => {
+  const keys = new Set([
+    ...Object.keys(from),
+    ...steps.flatMap((s) => Object.keys(s)),
+  ]);
+
+  const keyframes: Record<string, Array<string | number | undefined>> = {};
+  keys.forEach((k) => {
+    keyframes[k] = [from[k], ...steps.map((s) => s[k])];
   });
   return keyframes;
 };
@@ -19,8 +33,8 @@ interface BlurTextProps {
   direction?: 'top' | 'bottom';
   threshold?: number;
   rootMargin?: string;
-  animationFrom?: any;
-  animationTo?: any[];
+  animationFrom?: AnimationProperties;
+  animationTo?: AnimationProperties[];
   easing?: (t: number) => number;
   onAnimationComplete?: () => void;
   stepDuration?: number;
@@ -89,12 +103,12 @@ const BlurText: React.FC<BlurTextProps> = ({
       {elements.map((segment, index) => {
         const animateKeyframes = buildKeyframes(fromSnapshot, toSnapshots);
 
-        const spanTransition: any = {
+        const spanTransition = {
           duration: totalDuration,
           times,
-          delay: (index * delay) / 1000
+          delay: (index * delay) / 1000,
+          ease: easing,
         };
-        spanTransition.ease = easing;
 
         return (
           <motion.span

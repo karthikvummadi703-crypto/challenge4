@@ -32,16 +32,18 @@ export default function DemoBadge({ onExit }: { onExit: () => void }) {
       <div className="flex items-center gap-2">
         <button
           onClick={handleReset}
+          aria-label={justReset ? 'Demo data has been reset' : 'Reset demo data to initial sample values'}
           className="flex items-center gap-1 bg-black/10 hover:bg-black/20 px-2 py-1 rounded-md transition-colors uppercase"
         >
-          <RotateCcw className="h-3 w-3" />
+          <RotateCcw className="h-3 w-3" aria-hidden="true" />
           {justReset ? 'Reset!' : 'Reset Demo Data'}
         </button>
         <button
           onClick={onExit}
+          aria-label="Exit demo mode and return to the login screen"
           className="flex items-center gap-1 bg-black/10 hover:bg-black/20 px-2 py-1 rounded-md transition-colors uppercase"
         >
-          <LogOut className="h-3 w-3" />
+          <LogOut className="h-3 w-3" aria-hidden="true" />
           Exit Demo Mode
         </button>
       </div>
