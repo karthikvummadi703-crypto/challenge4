@@ -54,12 +54,19 @@ function StadiumSeatMap({
   return (
     <div
       id="stadium-seat-map-container"
-      className="relative w-full aspect-[5/4] bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-2xl backdrop-blur-md isolate"
-      style={{ transform: 'translateZ(0)' }}
+      className="relative w-full aspect-[5/4] rounded-2xl overflow-hidden shadow-2xl"
     >
+      {/* Blurred glass background — isolated on its own compositor layer and
+          kept separate from the foreground wrapper below so backdrop-blur
+          never shares a layer with (and can't visually bleed onto) the
+          sharp text/icons/SVG on top of it. */}
+      <div className="gpu-blur-layer absolute inset-0 bg-slate-950/60 border border-slate-800/80 backdrop-blur-md" />
+
       {/* Background radial glow */}
       <div className="absolute inset-0 bg-radial from-emerald-950/10 via-transparent to-transparent pointer-events-none" />
 
+      {/* Foreground content — its own crisp layer above the blur */}
+      <div className="gpu-blur-foreground p-6 flex flex-col justify-between h-full">
       {/* Title Bar */}
       <div className="flex items-center justify-between z-10">
         <div>
@@ -248,6 +255,7 @@ function StadiumSeatMap({
           <span className="w-2.5 h-2.5 rounded-full bg-teal-500/20 border border-teal-500" />
           <span className="text-[10px] text-slate-400">Food Logistics</span>
         </div>
+      </div>
       </div>
     </div>
   );

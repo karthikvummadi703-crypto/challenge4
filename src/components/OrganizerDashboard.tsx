@@ -411,16 +411,20 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       <div id="organizer-login-container" className="relative min-h-screen bg-slate-950 flex items-center justify-center p-6 overflow-hidden">
         
         {/* Stadium backdrop */}
-        <div className="absolute inset-0 z-0">
+        <div className="gpu-blur-layer absolute inset-0">
           <img src={stadiumBg} alt="stadium" className="w-full h-full object-cover opacity-15 saturate-50 filter blur-[1px]" />
           <div className="absolute inset-0 bg-slate-950/80" />
         </div>
 
+        {/* Login card — bg-slate-900 is a fully opaque solid color here, so
+            backdrop-blur-md has nothing translucent to blur; dropped it since
+            it did no visual work and only added an extra compositing layer
+            behind the crisp form fields/text below. */}
         <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="relative z-10 w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 backdrop-blur-md shadow-[0_0_50px_rgba(16,185,129,0.1)]"
+          className="gpu-blur-foreground w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-[0_0_50px_rgba(16,185,129,0.1)]"
         >
           <div className="text-center space-y-3 mb-8">
             <div className="h-14 w-14 rounded-2xl bg-emerald-500 text-black flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -493,12 +497,13 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
       {/* Dynamic Success Modal */}
       <AnimatePresence>
         {showPublishSuccessModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="gpu-blur-layer absolute inset-0 bg-black/80 backdrop-blur-md" />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-6 shadow-[0_0_50px_rgba(16,185,129,0.3)]"
+              className="gpu-blur-foreground w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-6 shadow-[0_0_50px_rgba(16,185,129,0.3)]"
             >
               <div className="h-16 w-16 bg-emerald-400 text-black rounded-full flex items-center justify-center mx-auto shadow-lg">
                 <CheckCircle className="h-9 w-9" />

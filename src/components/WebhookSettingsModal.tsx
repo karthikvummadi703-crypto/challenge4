@@ -79,7 +79,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            className="gpu-blur-layer absolute inset-0 bg-black/80 backdrop-blur-md"
           />
 
           {/* Modal Container */}
@@ -88,7 +88,7 @@ export default function WebhookSettingsModal({ isOpen, onClose, onSave }: Webhoo
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 20, opacity: 0 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.15)]"
+            className="gpu-blur-foreground w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.15)]"
           >
             {/* Gradient Header */}
             <div className="bg-gradient-to-r from-emerald-950/80 to-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">

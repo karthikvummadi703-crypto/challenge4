@@ -95,8 +95,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       />
 
       {/* Stadium glow effects — decorative */}
-      <div aria-hidden="true" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--dynamic-accent)] opacity-10 rounded-full blur-[140px] pointer-events-none z-0 transition-all duration-700" />
-      <div aria-hidden="true" className="absolute top-1/4 left-1/4 w-[300px] h-[300px] bg-[var(--dynamic-accent)] opacity-5 rounded-full blur-[100px] pointer-events-none z-0 transition-all duration-700" />
+      <div aria-hidden="true" className="gpu-blur-layer absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--dynamic-accent)] opacity-10 rounded-full blur-[140px] pointer-events-none transition-all duration-700" />
+      <div aria-hidden="true" className="gpu-blur-layer absolute top-1/4 left-1/4 w-[300px] h-[300px] bg-[var(--dynamic-accent)] opacity-5 rounded-full blur-[100px] pointer-events-none transition-all duration-700" />
 
       <div className="relative z-20 text-center max-w-lg px-6 flex flex-col items-center space-y-8">
 

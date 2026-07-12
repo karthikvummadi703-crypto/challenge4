@@ -20,6 +20,13 @@
 @layer base {
   body {
     font-family: var(--font-sans);
+    /* ── Text clarity ─────────────────────────────────────────────────────
+       Keeps foreground text crisp even when it sits above GPU-composited
+       blur layers, on browsers/GPU drivers that otherwise soften small
+       text under heavy compositing (Chrome/Android in particular). */
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* ── Accessibility: skip-to-content link ──────────────────────────────────
@@ -65,6 +72,29 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* ── GPU blur isolation ──────────────────────────────────────────────────
+   Apply to any element carrying `blur-[...]`, `backdrop-blur-*`, or a
+   `filter`/`backdrop-filter: blur()` rule. Promotes the element onto its
+   own compositor layer so the blur can never be squashed together with —
+   and visually bleed onto — sharp foreground content (a real Chrome/
+   Android GPU-driver compositing bug, not a CSS authoring mistake).
+   Always pair with a foreground wrapper using `.gpu-blur-foreground`
+   (position: relative; z-index: 1) so text/icons/buttons render in their
+   own crisp layer above the blur. */
+.gpu-blur-layer {
+  isolation: isolate;
+  transform: translateZ(0);
+  contain: strict;
+  backface-visibility: hidden;
+  will-change: transform;
+  z-index: 0;
+}
+
+.gpu-blur-foreground {
+  position: relative;
+  z-index: 1;
 }
 
 /* Custom slow spin for settings icon */

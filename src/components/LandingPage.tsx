@@ -17,7 +17,7 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
     <div id="landing-page-root" className="relative min-h-screen bg-slate-950 text-white flex flex-col justify-between overflow-hidden">
       
       {/* Absolute Cinematic Stadium Background with overlays */}
-      <div className="absolute inset-0 z-0">
+      <div className="gpu-blur-layer absolute inset-0">
         <img 
           src={stadiumBg} 
           alt="FIFA Stadium 2026" 
@@ -44,9 +44,12 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
         />
       </div>
 
-      {/* Header navbar */}
-      <header className="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between border-b border-slate-900/40 backdrop-blur-sm">
-        <div className="flex items-center space-x-3">
+      {/* Header navbar — backdrop-blur-sm moved to its own absolutely
+          positioned layer behind the row content so the blur can't share a
+          compositing layer with (and bleed onto) the logo text/badges. */}
+      <header className="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between border-b border-slate-900/40">
+        <div className="gpu-blur-layer absolute inset-0 backdrop-blur-sm" />
+        <div className="gpu-blur-foreground flex items-center space-x-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
             <span className="font-sans font-black text-black text-lg">N</span>
           </div>
@@ -59,7 +62,7 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
         </div>
 
         {/* FIFA logo mockup styling */}
-        <div className="flex items-center space-x-3 bg-slate-900/60 border border-slate-800 px-4 py-1.5 rounded-full">
+        <div className="gpu-blur-foreground flex items-center space-x-3 bg-slate-900/60 border border-slate-800 px-4 py-1.5 rounded-full">
           <span className="text-xs font-bold text-emerald-400">FIFA WORLD CUP 2026</span>
           <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse" />
           <span className="text-[10px] font-semibold text-slate-400">OFFICIAL INTELLIGENCE PORTAL</span>
@@ -87,19 +90,23 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
             </p>
           </div>
 
-          {/* Core Ronaldo conceptual tagline card */}
-          <div className="bg-slate-900/50 border border-slate-800/60 p-4 rounded-2xl flex items-center space-x-4 max-w-md mx-auto lg:mx-0 backdrop-blur-md shadow-lg">
-            <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-800 border border-slate-700/60 shrink-0">
-              <img 
-                src={ronaldoConcept} 
-                alt="Legendary #7 concept" 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover scale-110 filter saturate-100" 
-              />
-            </div>
-            <div className="text-left">
-              <p className="text-xs text-slate-400 italic">"Talent without working hard is nothing."</p>
-              <p className="text-[10px] font-bold text-emerald-400 mt-1 uppercase font-mono tracking-wider">— Legendary Jersey No.7 Inspiration</p>
+          {/* Core Ronaldo conceptual tagline card — blur layer split from the
+              text/image content so foreground stays crisp. */}
+          <div className="relative max-w-md mx-auto lg:mx-0 rounded-2xl shadow-lg overflow-hidden">
+            <div className="gpu-blur-layer absolute inset-0 bg-slate-900/50 border border-slate-800/60 backdrop-blur-md" />
+            <div className="gpu-blur-foreground p-4 flex items-center space-x-4">
+              <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-800 border border-slate-700/60 shrink-0">
+                <img 
+                  src={ronaldoConcept} 
+                  alt="Legendary #7 concept" 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover scale-110 filter saturate-100" 
+                />
+              </div>
+              <div className="text-left">
+                <p className="text-xs text-slate-400 italic">"Talent without working hard is nothing."</p>
+                <p className="text-[10px] font-bold text-emerald-400 mt-1 uppercase font-mono tracking-wider">— Legendary Jersey No.7 Inspiration</p>
+              </div>
             </div>
           </div>
 
@@ -120,8 +127,11 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
           </div>
         </div>
 
-        {/* Right column: Beautiful Neon Gateway Cards */}
-        <div className="w-full max-w-md bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-lg shadow-[0_0_50px_rgba(16,185,129,0.08)] space-y-6 relative overflow-hidden">
+        {/* Right column: Beautiful Neon Gateway Cards — blur layer split from
+            the buttons/text content so foreground stays crisp. */}
+        <div className="relative w-full max-w-md rounded-3xl shadow-[0_0_50px_rgba(16,185,129,0.08)] overflow-hidden">
+          <div className="gpu-blur-layer absolute inset-0 bg-slate-900/60 border border-slate-800 backdrop-blur-lg" />
+          <div className="gpu-blur-foreground p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-1">
             <h3 className="font-sans font-bold text-xl text-white">Command Gateways</h3>
             <p className="text-xs text-slate-500">Access your specialized control interfaces below</p>
@@ -198,6 +208,7 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
             </button>
             <span className="text-[10px] text-slate-600 font-mono block uppercase mt-3">FIFA WORLD CUP 2026 STADIUM INTELLIGENCE CONTEXT</span>
           </div>
+          </div>
         </div>
 
       </main>
@@ -207,9 +218,10 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-6"
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
           onClick={() => setShowDemoPicker(false)}
         >
+          <div className="gpu-blur-layer absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -217,7 +229,7 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
             role="dialog"
             aria-modal="true"
             aria-labelledby="demo-picker-title"
-            className="w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-5 shadow-[0_0_60px_rgba(245,158,11,0.15)]"
+            className="gpu-blur-foreground w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-5 shadow-[0_0_60px_rgba(245,158,11,0.15)]"
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
