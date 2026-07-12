@@ -12,7 +12,9 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
 - Dev: `npm run dev` (bound to the "Start application" workflow, serves on port 5000 — Express + Vite middleware).
 - Build: `npm run build` (Vite client build + esbuild server bundle to `dist/`).
 - Start (prod): `npm start` (runs `dist/server.cjs`).
-- Tests: `npm test` (Vitest, `tests/server.test.ts`).
+- Tests: `npm test` (Vitest, `tests/server.test.ts` + `tests/demoStore.test.ts`).
+- Coverage: `npm run test:coverage` — enforces a floor on `server.ts` (65% statements/lines, 70% branches, 50% functions) via `vitest.config.ts` `coverage.thresholds` so it fails loudly if coverage regresses.
+- Lint: `npm run lint` (`tsc --noEmit` + `eslint .`, flat config in `eslint.config.js`). Scoped to real bugs (unused vars, prefer-const, hook rules) — deliberately excludes `eslint-plugin-react-hooks`'s newer "purity"/set-state-in-effect rules, which are React-Compiler-oriented and would require an unrelated architectural rewrite of this codebase's effect patterns.
 - Firestore rules test: `npm run test:rules` (boots a local Firestore emulator via `firebase emulators:exec` and runs `tests/firestoreRules.test.ts` against it — excluded from the default `npm test` run since it needs the emulator).
 - Admin integrity check: `npm run verify:admin` (fails if the live `admins` collection doesn't have exactly one document; requires the `FIREBASE_SERVICE_ACCOUNT_KEY` secret).
 
@@ -96,6 +98,21 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
 4. Deployment target: **autoscale** (`node dist/server.cjs`), configured in `.replit`.
 5. `VITE_FIREBASE_*` shared env vars already set in `.replit [userenv.shared]`.
 6. Set `GEMINI_API_KEY` secret for live AI chat (app falls back gracefully without it).
+
+## Security hardening (2026-07-12)
+- Production `Content-Security-Policy` no longer includes `'unsafe-eval'` in
+  `script-src` (only needed by Vite's dev-time HMR client; the prod bundle is
+  pre-compiled and never calls `eval`) and now sends `frame-ancestors 'none'`.
+- Added `Permissions-Policy` (denies camera/mic/geolocation/payment/usb — the
+  app never uses them) and `Strict-Transport-Security` (prod only, since HSTS
+  is meaningless without HTTPS) response headers.
+- Known accepted risk: `npm audit` reports moderate-severity advisories in
+  `firebase-admin`'s transitive dependency chain (`google-gax` → `retry-request`
+  → `teeny-request` → old `uuid`). No non-breaking fix exists yet — the only
+  fix path is a breaking downgrade of `firebase-admin` itself via
+  `npm audit fix --force`, which is not worth the risk for moderate-severity
+  transitive advisories. Re-check with `npm audit` after the next
+  `firebase-admin` version bump.
 
 ## User preferences
 - Preserve the existing dark neon "stadium command center" UI — do not redesign.

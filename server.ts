@@ -21,12 +21,25 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Locks down powerful browser APIs the app never uses, reducing the blast
+  // radius of any future XSS by denying access to camera/mic/geolocation/etc.
+  res.setHeader('Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()');
   if (isDev) {
+    // Vite's dev-time HMR client relies on eval() for module transforms, so
+    // 'unsafe-eval' is scoped to development only and never ships to prod.
     res.setHeader('Content-Security-Policy',
       "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
   } else {
+    // Production bundle is pre-compiled by Vite/esbuild and never calls eval(),
+    // so 'unsafe-eval' is dropped here. 'unsafe-inline' on style-src remains
+    // for Tailwind's dynamically-applied inline style attributes.
     res.setHeader('Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com; frame-ancestors 'none';");
+    // HSTS only makes sense once the app is actually served over HTTPS
+    // (true for Replit's autoscale deployments) — forces browsers to remember
+    // that and never downgrade to plain HTTP for a year.
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
   next();
 });
@@ -50,6 +63,7 @@ app.use(express.json({ limit: '64kb' }));
 
 /** Strips control characters and trims whitespace from a string. */
 const sanitize = (val: unknown): string =>
+  // eslint-disable-next-line no-control-regex -- intentionally stripping control chars from user input
   typeof val === 'string' ? val.replace(/[\x00-\x1F\x7F]/g, '').trim() : '';
 
 /** Returns 400 with a consistent error shape. */
@@ -59,7 +73,7 @@ const badRequest = (res: Response, message: string) =>
 // Non-secret runtime config (n8n URLs). Real app data (matches, volunteers,
 // tasks, orders, issues, emergencies) lives in Firestore and is read/written
 // directly by the frontend via onSnapshot — there is no in-memory copy here.
-let config = {
+const config = {
   n8nWebhookUrl:      process.env.N8N_WEBHOOK_URL        || process.env.VITE_N8N_WEBHOOK_PRODUCTION_URL || '',
   n8nAiAssistantUrl:  process.env.N8N_AI_ASSISTANT_URL   || '',
   useMockAI: true,
@@ -225,7 +239,7 @@ Answer the operator's question concisely (2-4 sentences), in character as a stad
   const q = text.toLowerCase();
   const { pendingOrders, openIssues, activeEmergencies, volunteersActive, totalIssues, totalOrders } = telemetry;
 
-  let responseText = '';
+  let responseText: string;
 
   if (q.includes('incident') || q.includes('issue') || q.includes('summarize')) {
     responseText = `**Stadium Incident Summary**: ${totalIssues} total issues — **${openIssues} open**.

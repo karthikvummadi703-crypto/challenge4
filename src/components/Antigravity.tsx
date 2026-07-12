@@ -1,4 +1,3 @@
-/* eslint-disable react/no-unknown-property */
 import React, { useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -138,9 +137,9 @@ const AntigravityInner: React.FC<AntigravityProps> = ({
     const globalRotation = state.clock.getElapsedTime() * rotationSpeed;
 
     particles.forEach((particle, i) => {
-      let { t, speed, mx, my, mz, cz, randomRadiusOffset } = particle;
+      const { speed, mx, my, mz, cz, randomRadiusOffset } = particle;
 
-      t = particle.t += speed / 2;
+      const t = particle.t += speed / 2;
 
       const projectionFactor = 1 - cz / 50;
       const projectedTargetX = targetX * projectionFactor;

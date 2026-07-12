@@ -6,7 +6,7 @@ import request from 'supertest';
 // without needing real Firebase credentials or network access.
 let mockUid: string | null = null;
 let mockIsAdmin = false;
-let mockAdminSdkConfigured = true;
+const mockAdminSdkConfigured = true;
 
 vi.mock('../lib/firebaseAdmin', () => ({
   isAdminSdkConfigured: () => mockAdminSdkConfigured,
@@ -59,6 +59,7 @@ describe('Security headers', () => {
     expect(res.headers['x-xss-protection']).toBe('1; mode=block');
     expect(res.headers['content-security-policy']).toBeTruthy();
     expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    expect(res.headers['permissions-policy']).toContain('geolocation=()');
   });
 });
 
