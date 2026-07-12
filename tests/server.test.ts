@@ -1,6 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 
+// Stub the Gemini SDK so these tests never make a real network call — with a
+// real GEMINI_API_KEY configured (as in a deployed/dev environment), the
+// unmocked SDK would hit the live Gemini API on every "falls through to
+// Gemini" case below, making tests slow/flaky/network-dependent. Default
+// behavior rejects (simulating Gemini unavailable) so `answerStadiumQuestion`
+// falls through to the deterministic local rule-based engine that the
+// existing assertions below were written against (matching how these tests
+// behaved when no GEMINI_API_KEY was configured at all). Tests that care
+// about the Gemini-branch specifically can override via
+// `mockGenerateContent.mockResolvedValueOnce(...)`.
+const mockGenerateContent = vi.fn(async () => { throw new Error('Gemini disabled in tests'); });
+vi.mock('@google/genai', () => ({
+  GoogleGenAI: vi.fn().mockImplementation(function GoogleGenAI() {
+    return { models: { generateContent: mockGenerateContent } };
+  }),
+}));
+
 // Controllable mock of the Firebase Admin boundary so tests can simulate
 // unauthenticated, authenticated-non-admin, and authenticated-admin callers
 // without needing real Firebase credentials or network access.
