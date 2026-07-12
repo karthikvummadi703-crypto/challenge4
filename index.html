@@ -16,6 +16,7 @@
     <!-- ── Prevent white flash before JS/CSS load: paint dark background immediately ── -->
     <style>
       html, body, #root { background-color: #020617; margin: 0; }
+      @keyframes pre-load-spin { to { transform: rotate(360deg); } }
     </style>
 
     <!-- ── Favicon ──────────────────────────────────────────────────────────── -->
@@ -67,7 +68,14 @@
     <!-- Skip navigation link — visually hidden until focused (keyboard/screen reader) -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static pre-React loading indicator: shows instantly (no JS needed) while
+           the app bundle downloads, then React's createRoot().render() replaces
+           this entire subtree automatically once it mounts. -->
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background-color:#020617;">
+        <div style="width:40px;height:40px;border-radius:50%;border:3px solid rgba(16,185,129,0.25);border-top-color:#10b981;animation:pre-load-spin 0.8s linear infinite;"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
