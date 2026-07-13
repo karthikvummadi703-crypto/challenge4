@@ -88,4 +88,11 @@ describe('VolunteerLogin', () => {
     expect(onQuickLogin).toHaveBeenCalledTimes(1);
     expect(onQuickLogin).toHaveBeenCalledWith(demoAccounts[0]);
   });
+
+  it('calls setPassword when the password field changes', () => {
+    const setPassword = vi.fn();
+    render(<VolunteerLogin {...defaultProps} setPassword={setPassword} />);
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret123' } });
+    expect(setPassword).toHaveBeenCalledWith('secret123');
+  });
 });

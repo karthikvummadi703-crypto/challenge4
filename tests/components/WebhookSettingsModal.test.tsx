@@ -177,4 +177,57 @@ describe('WebhookSettingsModal — save interaction', () => {
     fireEvent.click(toggle);
     expect(screen.getByRole('button', { name: /Enable rule-based fallback/i })).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('updates the dispatch URL field when the user types in it', async () => {
+    render(<WebhookSettingsModal {...baseProps} />);
+    await waitFor(() => screen.getByRole('dialog'));
+    const dispatchInput = screen.getByLabelText(/n8n Dispatch Orchestration Webhook/i);
+    fireEvent.change(dispatchInput, { target: { value: 'https://hook.example.com/dispatch' } });
+    expect(dispatchInput).toHaveValue('https://hook.example.com/dispatch');
+  });
+
+  it('updates the AI assistant URL field when the user types in it', async () => {
+    render(<WebhookSettingsModal {...baseProps} />);
+    await waitFor(() => screen.getByRole('dialog'));
+    const aiInput = screen.getByLabelText(/n8n AI Command Assistant Webhook/i);
+    fireEvent.change(aiInput, { target: { value: 'https://ai.example.com/webhook' } });
+    expect(aiInput).toHaveValue('https://ai.example.com/webhook');
+  });
+
+  it('calls onClose after the 1.5s close-delay following a successful save', async () => {
+    // Spy on setTimeout so we can fire the callback immediately
+    const pendingCallbacks: Array<() => void> = [];
+    const realSetTimeout = globalThis.setTimeout.bind(globalThis);
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation((cb: (...args: unknown[]) => void, ms?: number, ...args: unknown[]) => {
+        if (ms === 1500) {
+          pendingCallbacks.push(() => cb(...args));
+          return 0 as unknown as ReturnType<typeof setTimeout>;
+        }
+        return realSetTimeout(cb as () => void, ms, ...args);
+      });
+
+    const onClose = vi.fn();
+    mockAuthedFetch.mockReset();
+    mockGetConfig();
+    mockSaveSuccess();
+
+    render(<WebhookSettingsModal isOpen={true} onClose={onClose} onSave={vi.fn()} />);
+    await waitFor(() => screen.getByRole('button', { name: /Save Settings/i }));
+
+    fireEvent.submit(
+      screen.getByRole('button', { name: /Save Settings/i }).closest('form')!
+    );
+
+    // Wait for success message to appear (confirms save resolved)
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
+
+    // The 1.5 s callback should be registered by now — fire it
+    expect(pendingCallbacks.length).toBeGreaterThan(0);
+    pendingCallbacks.forEach(cb => cb());
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    setTimeoutSpy.mockRestore();
+  });
 });

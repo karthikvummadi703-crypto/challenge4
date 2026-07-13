@@ -114,6 +114,45 @@ Roles: **Admin** (Organizer Dashboard), **Volunteer** (Volunteer Dashboard),
   transitive advisories. Re-check with `npm audit` after the next
   `firebase-admin` version bump.
 
+## Firebase App Check (optional, currently unactivated)
+
+App Check adds an additional layer of backend protection by verifying that API
+requests originate from the legitimate app (not scrapers or bots).  The code is
+fully implemented and production-ready — it is deliberately unactivated so that
+the app works without extra Firebase Console setup.
+
+**To activate App Check:**
+
+1. **Firebase Console** → your project → App Check.  Register the web app with a
+   reCAPTCHA v3 site key (`https://www.google.com/recaptcha/admin`).  Copy the
+   **site key**.
+
+2. **Client (Vite)** — add the site key as a Replit secret:
+   ```
+   VITE_FIREBASE_APPCHECK_SITE_KEY=<your-recaptcha-v3-site-key>
+   ```
+   The client (`src/firebase.ts`) reads this at build time.  When present it calls
+   `initializeAppCheck()` and attaches the token to every API request via
+   `src/services/apiClient.ts`.  When absent the client silently skips token
+   generation — no errors, no change in UX.
+
+3. **Server** — add an environment variable (not a secret — it is not sensitive):
+   ```
+   ENFORCE_APP_CHECK=true
+   ```
+   The server (`lib/firebaseAdmin.ts → requireAppCheck`) checks this flag at the
+   top of its middleware.  When the flag is absent (or anything other than `"true"`)
+   all requests pass through unchecked — existing deployments keep working
+   unchanged.  When the flag is `"true"` requests to `/api/config` (GET + POST)
+   and `/api/ai/command` are rejected with HTTP 401 unless they carry a valid
+   `X-Firebase-AppCheck` token.
+
+4. Rebuild and redeploy (`npm run build` → `npm start`).
+
+**Do not set `ENFORCE_APP_CHECK=true` without also setting
+`VITE_FIREBASE_APPCHECK_SITE_KEY`** — the server would then reject every API
+request because the client would not attach any token.
+
 ## User preferences
 - Preserve the existing dark neon "stadium command center" UI — do not redesign.
 
