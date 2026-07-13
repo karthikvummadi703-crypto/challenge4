@@ -181,6 +181,7 @@ vi.mock('../../src/components/organizer/VolunteersPanel', () => ({
     newVolunteerEmail: string; setNewVolunteerEmail: (v: string) => void;
     newVolunteerPassword: string; setNewVolunteerPassword: (v: string) => void;
     newVolunteerGate: string; setNewVolunteerGate: (v: string) => void;
+    passwordAcknowledged: boolean; setPasswordAcknowledged: (v: boolean) => void;
     onAddVolunteer: (e: React.FormEvent) => void;
     onRemoveVolunteer: (id: string) => void;
     onPublishEvent: () => void;
@@ -204,6 +205,13 @@ vi.mock('../../src/components/organizer/VolunteersPanel', () => ({
           value={props.newVolunteerPassword}
           onChange={e => props.setNewVolunteerPassword(e.target.value)}
           aria-label="Volunteer password"
+        />
+        <input
+          data-testid="vol-password-ack-checkbox"
+          type="checkbox"
+          checked={props.passwordAcknowledged}
+          onChange={e => props.setPasswordAcknowledged(e.target.checked)}
+          aria-label="Password copied acknowledgment"
         />
         <button type="submit" data-testid="add-volunteer-btn" disabled={props.isCreatingVolunteer}>
           Add Volunteer
@@ -394,6 +402,7 @@ describe('OrganizerDashboard — handleAddVolunteer validation', () => {
     fireEvent.change(screen.getByTestId('vol-name-input'),     { target: { value: 'Eve Smith' } });
     fireEvent.change(screen.getByTestId('vol-email-input'),    { target: { value: 'eve@nexus.com' } });
     fireEvent.change(screen.getByTestId('vol-password-input'), { target: { value: 'secure99' } });
+    fireEvent.click(screen.getByTestId('vol-password-ack-checkbox'));
     await act(async () => { fireEvent.submit(screen.getByTestId('add-volunteer-form')); });
     expect(mockAdminCreateVolunteer).toHaveBeenCalledWith(
       'Eve Smith', 'eve@nexus.com', 'secure99', expect.any(String)
@@ -407,6 +416,7 @@ describe('OrganizerDashboard — handleAddVolunteer validation', () => {
     fireEvent.change(screen.getByTestId('vol-name-input'),     { target: { value: 'Frank' } });
     fireEvent.change(screen.getByTestId('vol-email-input'),    { target: { value: 'frank@nexus.com' } });
     fireEvent.change(screen.getByTestId('vol-password-input'), { target: { value: 'demopass' } });
+    fireEvent.click(screen.getByTestId('vol-password-ack-checkbox'));
     await act(async () => { fireEvent.submit(screen.getByTestId('add-volunteer-form')); });
     expect(mockAddRecord).toHaveBeenCalledWith('volunteers', expect.objectContaining({ fullName: 'Frank', email: 'frank@nexus.com', role: 'volunteer' }));
     expect(mockAdminCreateVolunteer).not.toHaveBeenCalled();
@@ -418,6 +428,7 @@ describe('OrganizerDashboard — handleAddVolunteer validation', () => {
     fireEvent.change(screen.getByTestId('vol-name-input'),     { target: { value: 'Grace' } });
     fireEvent.change(screen.getByTestId('vol-email-input'),    { target: { value: 'grace@nexus.com' } });
     fireEvent.change(screen.getByTestId('vol-password-input'), { target: { value: 'pass9876' } });
+    fireEvent.click(screen.getByTestId('vol-password-ack-checkbox'));
     await act(async () => { fireEvent.submit(screen.getByTestId('add-volunteer-form')); });
     await waitFor(() => {
       expect(screen.getByTestId('vol-name-input')).toHaveValue('');
@@ -432,6 +443,7 @@ describe('OrganizerDashboard — handleAddVolunteer validation', () => {
     fireEvent.change(screen.getByTestId('vol-name-input'),     { target: { value: 'Henry' } });
     fireEvent.change(screen.getByTestId('vol-email-input'),    { target: { value: 'henry@nexus.com' } });
     fireEvent.change(screen.getByTestId('vol-password-input'), { target: { value: 'henrypw1' } });
+    fireEvent.click(screen.getByTestId('vol-password-ack-checkbox'));
     await act(async () => { fireEvent.submit(screen.getByTestId('add-volunteer-form')); });
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('email already exists'));
   });

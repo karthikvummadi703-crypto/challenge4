@@ -11,10 +11,12 @@ const defaultProps = {
   setNewVolunteerName: vi.fn(),
   newVolunteerEmail: '',
   setNewVolunteerEmail: vi.fn(),
-  newVolunteerPassword: '',
+  newVolunteerPassword: 'Xy7#kQp2Lm9!Zt',
   setNewVolunteerPassword: vi.fn(),
   newVolunteerGate: 'Gate A',
   setNewVolunteerGate: vi.fn(),
+  passwordAcknowledged: true,
+  setPasswordAcknowledged: vi.fn(),
   isCreatingVolunteer: false,
   isPublished: false,
   onAddVolunteer: vi.fn(),
@@ -40,7 +42,7 @@ describe('VolunteersPanel', () => {
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/assigned gate/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/auto-generated password/i)).toBeInTheDocument();
   });
 
   it('shows empty-roster message when no volunteers', () => {
@@ -122,11 +124,23 @@ describe('VolunteersPanel', () => {
     expect(setNewVolunteerGate).toHaveBeenCalledWith('Gate C');
   });
 
-  it('calls setNewVolunteerPassword when password input changes', () => {
-    const setNewVolunteerPassword = vi.fn();
-    render(<VolunteersPanel {...defaultProps} setNewVolunteerPassword={setNewVolunteerPassword} />);
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secure123' } });
-    expect(setNewVolunteerPassword).toHaveBeenCalledWith('secure123');
+  it('renders the auto-generated password as read-only (cannot be edited by the admin)', () => {
+    render(<VolunteersPanel {...defaultProps} />);
+    const passwordField = screen.getByLabelText(/auto-generated password/i);
+    expect(passwordField).toHaveValue('Xy7#kQp2Lm9!Zt');
+    expect(passwordField).toHaveAttribute('readonly');
+  });
+
+  it('calls setPasswordAcknowledged when the acknowledgment checkbox is toggled', () => {
+    const setPasswordAcknowledged = vi.fn();
+    render(<VolunteersPanel {...defaultProps} passwordAcknowledged={false} setPasswordAcknowledged={setPasswordAcknowledged} />);
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(setPasswordAcknowledged).toHaveBeenCalledWith(true);
+  });
+
+  it('disables Register Volunteer submit until the password is acknowledged', () => {
+    render(<VolunteersPanel {...defaultProps} passwordAcknowledged={false} />);
+    expect(screen.getByRole('button', { name: /register volunteer/i })).toBeDisabled();
   });
 
   it('shows volunteer count in table header', () => {

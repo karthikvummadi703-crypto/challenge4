@@ -1,5 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
@@ -32,6 +34,13 @@ app.use(helmet({
   xssFilter: false,
   crossOriginResourcePolicy: { policy: 'same-origin' },
 }));
+// Per-request CSP nonce. Production script-src drops 'unsafe-inline' and
+// only trusts scripts carrying this nonce (see the index.html templating in
+// startServer() below, which stamps it onto every <script> tag).
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
 app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -48,10 +57,11 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
       "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;");
   } else {
     // Production bundle is pre-compiled by Vite/esbuild and never calls eval(),
-    // so 'unsafe-eval' is dropped here. 'unsafe-inline' on style-src remains
-    // for Tailwind's dynamically-applied inline style attributes.
+    // so 'unsafe-eval' is dropped here. script-src has no 'unsafe-inline' —
+    // only scripts carrying the per-request nonce below are trusted. 'unsafe-inline'
+    // on style-src remains for Tailwind's dynamically-applied inline style attributes.
     res.setHeader('Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com; frame-ancestors 'none';");
+      `default-src 'self'; script-src 'self' 'nonce-${res.locals.cspNonce}'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com; frame-ancestors 'none';`);
     // HSTS only makes sense once the app is actually served over HTTPS
     // (true for Replit's autoscale deployments) — forces browsers to remember
     // that and never downgrade to plain HTTP for a year.
@@ -398,10 +408,24 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) =>
-      res.sendFile(path.join(distPath, 'index.html'))
-    );
+    // `index: false` stops express.static from auto-serving index.html for
+    // "/" — that path must go through the handler below instead, so every
+    // <script> tag gets stamped with the current request's CSP nonce.
+    app.use(express.static(distPath, { index: false }));
+    const indexHtmlPath = path.join(distPath, 'index.html');
+    let indexHtmlTemplate: string | null = null;
+    app.get('*', (_req: Request, res: Response) => {
+      if (indexHtmlTemplate === null) {
+        indexHtmlTemplate = fs.readFileSync(indexHtmlPath, 'utf-8');
+      }
+      const nonce = res.locals.cspNonce;
+      // Stamp the nonce onto every <script> tag (inline or src=) so each
+      // satisfies the 'nonce-...' script-src directive above. `<script` only
+      // matches opening tags — `</script>` has a `/` right after `<`, so it
+      // never matches this pattern.
+      const html = indexHtmlTemplate.replace(/<script/g, `<script nonce="${nonce}"`);
+      res.type('html').send(html);
+    });
   }
 
   app.listen(PORT, '0.0.0.0', () => {

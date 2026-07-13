@@ -7,7 +7,7 @@
  * All state is managed by `OrganizerDashboard`.
  */
 import React from 'react';
-import { Trash2, Loader2, Rocket } from 'lucide-react';
+import { Trash2, Loader2, Rocket, Copy } from 'lucide-react';
 import { Volunteer } from '../../types';
 
 interface VolunteersPanelProps {
@@ -20,6 +20,8 @@ interface VolunteersPanelProps {
   setNewVolunteerPassword: (v: string) => void;
   newVolunteerGate: string;
   setNewVolunteerGate: (v: string) => void;
+  passwordAcknowledged: boolean;
+  setPasswordAcknowledged: (v: boolean) => void;
   isCreatingVolunteer: boolean;
   isPublished: boolean;
   onAddVolunteer: (e: React.FormEvent) => void;
@@ -31,10 +33,19 @@ export default function VolunteersPanel({
   volunteersList,
   newVolunteerName, setNewVolunteerName,
   newVolunteerEmail, setNewVolunteerEmail,
-  newVolunteerPassword, setNewVolunteerPassword,
+  newVolunteerPassword,
   newVolunteerGate, setNewVolunteerGate,
+  passwordAcknowledged, setPasswordAcknowledged,
   isCreatingVolunteer, isPublished, onAddVolunteer, onRemoveVolunteer, onPublishEvent,
 }: VolunteersPanelProps) {
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(newVolunteerPassword);
+    } catch {
+      // Clipboard API can be unavailable (e.g. non-secure context) — copy is
+      // a convenience, not a requirement, so failing silently here is safe.
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -85,13 +96,31 @@ export default function VolunteersPanel({
             </div>
 
             <div>
-              <label htmlFor="vol-new-password" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Password</label>
-              <input id="vol-new-password" type="password" required placeholder="e.g. password123"
-                value={newVolunteerPassword} onChange={(e) => setNewVolunteerPassword(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-emerald-500 outline-none transition-all" />
+              <label htmlFor="vol-new-password" className="block text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1.5">Auto-Generated Password</label>
+              <div className="flex items-center gap-2">
+                <input id="vol-new-password" type="text" readOnly value={newVolunteerPassword}
+                  aria-describedby="vol-new-password-hint"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400 outline-none" />
+                <button type="button" onClick={handleCopyPassword} aria-label="Copy generated password to clipboard"
+                  className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-emerald-400 transition-all cursor-pointer shrink-0">
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              <p id="vol-new-password-hint" className="text-[10px] text-slate-500 mt-1.5">
+                Securely share this password with the volunteer — it won't be shown again after registration.
+              </p>
             </div>
 
-            <button type="submit" disabled={isCreatingVolunteer}
+            <div className="flex items-start gap-2">
+              <input id="vol-password-ack" type="checkbox" checked={passwordAcknowledged}
+                onChange={(e) => setPasswordAcknowledged(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500 cursor-pointer" />
+              <label htmlFor="vol-password-ack" className="text-[10px] text-slate-400 leading-snug cursor-pointer">
+                I have copied this password and will share it securely with the volunteer.
+              </label>
+            </div>
+
+            <button type="submit" disabled={isCreatingVolunteer || !passwordAcknowledged}
               className="w-full py-2.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-800 disabled:bg-slate-900 text-emerald-400 disabled:text-emerald-800 font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center space-x-2">
               {isCreatingVolunteer ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /><span>Registering...</span></>

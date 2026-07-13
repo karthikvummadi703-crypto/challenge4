@@ -6,6 +6,7 @@ import { getFriendlyErrorMessage } from '../services/authService';
 import { sendAICommand as sendAICommandRequest } from '../services/apiClient';
 import { subscribeCollection, addRecord, deleteRecord, publishSystemConfig } from '../services/dataSource';
 import { useDemoMode } from '../context/demoModeContext';
+import { generateSecurePassword } from '../utils/generatePassword';
 
 import OrganizerLogin from './organizer/OrganizerLogin';
 import PublishSuccessModal from './organizer/PublishSuccessModal';
@@ -62,9 +63,10 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
   // ── Volunteer form state ────────────────────────────────────────────────────
   const [newVolunteerName, setNewVolunteerName] = useState('');
   const [newVolunteerEmail, setNewVolunteerEmail] = useState('');
-  const [newVolunteerPassword, setNewVolunteerPassword] = useState('password123');
+  const [newVolunteerPassword, setNewVolunteerPassword] = useState(() => generateSecurePassword());
   const [newVolunteerGate, setNewVolunteerGate] = useState('Gate A');
   const [isCreatingVolunteer, setIsCreatingVolunteer] = useState(false);
+  const [passwordAcknowledged, setPasswordAcknowledged] = useState(false);
 
   // ── Data state ──────────────────────────────────────────────────────────────
   const [volunteersList, setVolunteersList] = useState<Volunteer[]>([]);
@@ -244,6 +246,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
     if (!trimmedName || !trimmedEmail || !trimmedPwd) { alert('All fields are required.'); return; }
     if (!EMAIL_RE.test(trimmedEmail)) { alert('Please enter a valid email address for the volunteer.'); return; }
     if (trimmedPwd.length < 6) { alert('Password must be at least 6 characters.'); return; }
+    if (!passwordAcknowledged) { alert('Please confirm you have copied the generated password before creating the account.'); return; }
 
     setIsCreatingVolunteer(true);
     try {
@@ -257,7 +260,8 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
         await adminCreateVolunteer(newVolunteerName, newVolunteerEmail, newVolunteerPassword, newVolunteerGate);
       }
       setNewVolunteerName(''); setNewVolunteerEmail('');
-      setNewVolunteerPassword(''); setNewVolunteerGate('Gate A');
+      setNewVolunteerPassword(generateSecurePassword()); setNewVolunteerGate('Gate A');
+      setPasswordAcknowledged(false);
     } catch (err: unknown) {
       console.error('Failed to register volunteer:', err);
       alert(err instanceof Error ? err.message : 'Failed to register volunteer. Ensure email is unique!');
@@ -360,6 +364,7 @@ export default function OrganizerDashboard({ onLogout, stadiumBg, ronaldoConcept
             newVolunteerEmail={newVolunteerEmail} setNewVolunteerEmail={setNewVolunteerEmail}
             newVolunteerPassword={newVolunteerPassword} setNewVolunteerPassword={setNewVolunteerPassword}
             newVolunteerGate={newVolunteerGate} setNewVolunteerGate={setNewVolunteerGate}
+            passwordAcknowledged={passwordAcknowledged} setPasswordAcknowledged={setPasswordAcknowledged}
             isCreatingVolunteer={isCreatingVolunteer}
             isPublished={isPublished}
             onAddVolunteer={handleAddVolunteer}
