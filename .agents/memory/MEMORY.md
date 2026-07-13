@@ -10,3 +10,4 @@
 - [GPU blur isolation gotcha](gpu-blur-isolation-gotcha.md) — isolating blur layers with translateZ(0)/will-change can itself reintroduce blur on rounded+overflow-hidden cards; use isolation+contain:paint only.
 - [ESLint react-hooks v7 purity rules](eslint-react-hooks-v7-purity.md) — its "recommended" config floods normal (non-Compiler) React apps with errors; hand-pick rules-of-hooks + exhaustive-deps instead.
 - [Nexus security/a11y pass decisions](nexus-security-a11y-pass.md) — CSRF model for bearer-token APIs, helmet vs custom headers, opt-in App Check, transitive audit vulns, shared modal a11y hook, coverage gap on dashboards.
+- [Nexus AI fallback verification](nexus-ai-fallback-verification.md) — n8n webhook-test URLs are single-fire debug-only; use /api/ai/demo-command to prove real source (n8n/Gemini/local) with actual evidence.
