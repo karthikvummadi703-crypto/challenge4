@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 
 // ── Patch scrollIntoView (not available in jsdom) ────────────────────────────
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -76,9 +76,9 @@ describe('DashboardOverviewPanel', () => {
     expect(screen.getByText('Welcome to Nexus AI.')).toBeInTheDocument();
   });
 
-  it('renders the StadiumSeatMap stub', () => {
+  it('renders the StadiumSeatMap stub (lazy-loaded via Suspense)', async () => {
     render(<DashboardOverviewPanel {...defaultProps} />);
-    expect(screen.getByTestId('stadium-seat-map-stub')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('stadium-seat-map-stub')).toBeInTheDocument());
   });
 
   it('shows "All clear" when recentAlerts is empty', () => {

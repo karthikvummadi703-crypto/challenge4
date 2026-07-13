@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { Users, Coffee, AlertTriangle, Activity, Send, Sparkles } from 'lucide-react';
 import { Volunteer, StadiumAlert } from '../../types';
-import StadiumSeatMap from '../StadiumSeatMap';
+
+const StadiumSeatMap = lazy(() => import('../StadiumSeatMap'));
 
 interface DashboardStats {
   activeVolunteers: number;
@@ -134,7 +135,9 @@ export default function DashboardOverviewPanel({
         <div className="xl:col-span-2 space-y-6">
           <div>
             <h3 className="font-sans font-bold text-sm text-slate-300 uppercase tracking-wider mb-2">Stadium Occupancy Heatmap</h3>
-            <StadiumSeatMap showHeatmap={true} />
+            <Suspense fallback={<div className="h-64 rounded-xl bg-slate-900/40 border border-slate-800 animate-pulse" aria-label="Loading stadium map" />}>
+              <StadiumSeatMap showHeatmap={true} />
+            </Suspense>
           </div>
 
           <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl space-y-4">
