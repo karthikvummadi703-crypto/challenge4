@@ -250,6 +250,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
+// Context files that export both a Provider component and a hook trigger the
+// react-refresh/only-export-components warning. This is the established
+// pattern for React context — suppressing here is correct.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

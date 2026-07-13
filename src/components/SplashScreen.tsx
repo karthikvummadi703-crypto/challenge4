@@ -39,6 +39,21 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     }
   }, [prefersReducedMotion, onComplete]);
 
+  // ── Performance sentinel (dev only) ───────────────────────────────────────
+  // Reports the real time from "browser executed first script in <head>" to
+  // "SplashScreen first mounted in React" — captures Firebase chunk download
+  // + parse + React hydration time.  Remove or gate on import.meta.env.DEV
+  // in production builds as needed.
+  useEffect(() => {
+    const t0 = (window as Window & { __nexus_t0?: number }).__nexus_t0;
+    if (t0 != null) {
+      console.info(
+        `[Nexus timing] SplashScreen first mount: ${Math.round(performance.now() - t0)} ms after HTML execution`
+      );
+    }
+  // Intentionally empty deps — run once on first mount only.
+  }, []);
+
   useEffect(() => {
     let currentStep = 0;
     let timer: ReturnType<typeof setTimeout>;

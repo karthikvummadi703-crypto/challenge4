@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Perf sentinel: captured before any other script so SplashScreen can
+         log the real time from "HTML executing" to "first React paint". -->
+    <script>window.__nexus_t0 = performance.now();</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 

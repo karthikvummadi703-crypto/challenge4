@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Task, TaskStatus, OrderStatus, EmergencyStatus, IssueStatus } from '../types';
 import { useAuth } from '../context/authContext';
 import { getFriendlyErrorMessage } from '../services/authService';
@@ -36,21 +36,29 @@ export default function VolunteerDashboard({ onLogout }: VolunteerDashboardProps
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [demoAccounts, setDemoAccounts] = useState<DemoVolunteerAccount[]>([]);
 
-  const currentVolunteer = isVolunteerDemo && demoProfile ? {
-    id: demoProfile.uid,
-    name: demoProfile.fullName,
-    volunteerId: demoProfile.volunteerId || 'VOL-DEMO1',
-    assignedGate: demoProfile.assignedGate || 'Gate A',
-    email: demoProfile.email,
-    status: 'active'
-  } : (user && role === 'volunteer' ? {
-    id: user.uid,
-    name: profile?.fullName || 'Volunteer',
-    volunteerId: user.uid ? `VOL-${user.uid.substring(0, 4).toUpperCase()}` : 'VOL-0000',
-    assignedGate: 'Gate A',
-    email: user.email,
-    status: 'active'
-  } : null);
+  const currentVolunteer = useMemo(() => {
+    if (isVolunteerDemo && demoProfile) {
+      return {
+        id: demoProfile.uid,
+        name: demoProfile.fullName,
+        volunteerId: demoProfile.volunteerId || 'VOL-DEMO1',
+        assignedGate: demoProfile.assignedGate || 'Gate A',
+        email: demoProfile.email,
+        status: 'active',
+      };
+    }
+    if (user && role === 'volunteer') {
+      return {
+        id: user.uid,
+        name: profile?.fullName || 'Volunteer',
+        volunteerId: user.uid ? `VOL-${user.uid.substring(0, 4).toUpperCase()}` : 'VOL-0000',
+        assignedGate: 'Gate A',
+        email: user.email,
+        status: 'active',
+      };
+    }
+    return null;
+  }, [isVolunteerDemo, demoProfile, user, role, profile]);
 
   const isAuthenticated = !!currentVolunteer;
 
