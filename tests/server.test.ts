@@ -23,20 +23,30 @@ vi.mock('@google/genai', () => ({
 // without needing real Firebase credentials or network access.
 let mockUid: string | null = null;
 let mockIsAdmin = false;
-const mockAdminSdkConfigured = true;
+// Mutable (not const) so individual tests can simulate the Admin SDK never
+// having been configured at all (missing FIREBASE_SERVICE_ACCOUNT_KEY) —
+// distinct from `telemetryShouldFail`, which simulates the SDK being
+// configured but the underlying Firestore calls failing.
+let mockAdminSdkConfigured = true;
 // Toggled by individual tests to simulate a Firestore read failing (e.g. a
 // PERMISSION_DENIED error from security rules, or a transient network error)
 // so we can exercise getStadiumTelemetry's catch-and-fall-back-to-zeros path.
 let telemetryShouldFail = false;
 let telemetryFailureError: Error = new Error('PERMISSION_DENIED: Missing or insufficient permissions.');
+// Per-collection docs the mocked `get()` returns, keyed by collection name
+// (e.g. 'volunteers', 'foodOrders') — lets tests exercise the actual
+// filter/count logic in getStadiumTelemetry instead of always seeing an
+// empty collection.
+let telemetryDocsByCollection: Record<string, { data: () => Record<string, unknown> }[]> = {};
 
 vi.mock('../lib/firebaseAdmin', () => ({
   isAdminSdkConfigured: () => mockAdminSdkConfigured,
   getAdminDb: () => ({
-    collection: () => ({
+    collection: (name: string) => ({
       get: async () => {
         if (telemetryShouldFail) throw telemetryFailureError;
-        return { docs: [], size: 0 };
+        const docs = telemetryDocsByCollection[name] ?? [];
+        return { docs, size: docs.length };
       },
     }),
   }),
@@ -83,7 +93,29 @@ beforeEach(() => {
   // to simulating a Firestore failure.
   telemetryShouldFail = false;
   telemetryFailureError = new Error('PERMISSION_DENIED: Missing or insufficient permissions.');
+  mockAdminSdkConfigured = true;
+  telemetryDocsByCollection = {};
 });
+
+/**
+ * `getStadiumTelemetry` caches successful reads for 10 seconds
+ * (`TELEMETRY_TTL_MS`). Earlier tests in this file already populate that
+ * module-level cache via successful `/api/ai/command` calls, so a later
+ * test that flips `telemetryShouldFail`/`mockAdminSdkConfigured` would
+ * silently be served the stale cached (zeroed) value instead of actually
+ * re-querying Firestore — passing for the wrong reason. Forcing `Date.now()`
+ * far enough ahead makes the cache-freshness check treat any prior cache
+ * entry as stale so the test genuinely exercises the code path it names.
+ * Restored immediately after use since other tests (rate limiting, etc.)
+ * rely on real time.
+ */
+function withStaleTelemetryCache<T>(fn: () => Promise<T>): Promise<T> {
+  const realNow = Date.now();
+  const spy = vi.spyOn(Date, 'now').mockReturnValue(realNow + 15_000);
+  // Wrap in Promise.resolve() — supertest's Test object is thenable but
+  // doesn't implement the full Promise API (no .finally).
+  return Promise.resolve(fn()).finally(() => spy.mockRestore());
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Security headers', () => {
@@ -422,10 +454,12 @@ describe('getStadiumTelemetry — Firestore failure fallback', () => {
     authed();
     telemetryShouldFail = true;
     telemetryFailureError = new Error('PERMISSION_DENIED: Missing or insufficient permissions.');
-    const res = await request(app)
-      .post('/api/ai/command')
-      .set('Authorization', 'Bearer fake-token')
-      .send({ text: 'available volunteers' });
+    const res = await withStaleTelemetryCache(() =>
+      request(app)
+        .post('/api/ai/command')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ text: 'available volunteers' })
+    );
     // The request must still succeed with a safe (zeroed) response instead
     // of crashing or leaking the underlying Firestore error to the client.
     expect(res.status).toBe(200);
@@ -437,12 +471,60 @@ describe('getStadiumTelemetry — Firestore failure fallback', () => {
     authed();
     telemetryShouldFail = true;
     telemetryFailureError = new Error('DEADLINE_EXCEEDED: network timeout');
-    const res = await request(app)
-      .post('/api/ai/command')
-      .set('Authorization', 'Bearer fake-token')
-      .send({ text: 'summarize incidents' });
+    const res = await withStaleTelemetryCache(() =>
+      request(app)
+        .post('/api/ai/command')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ text: 'summarize incidents' })
+    );
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('response');
+  });
+
+  it('returns zeroed telemetry immediately when the Admin SDK is not configured at all (no FIREBASE_SERVICE_ACCOUNT_KEY)', async () => {
+    authed();
+    mockAdminSdkConfigured = false;
+    const res = await withStaleTelemetryCache(() =>
+      request(app)
+        .post('/api/ai/command')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ text: 'available volunteers' })
+    );
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('response');
+    // Local engine's "volunteer" branch reports the (zeroed) active count.
+    expect(res.body.response).toMatch(/0 volunteers synchronized/);
+  });
+
+  it('computes real active/pending/open counts from non-empty Firestore collections', async () => {
+    authed();
+    telemetryDocsByCollection = {
+      volunteers: [
+        { data: () => ({ active: true }) },
+        { data: () => ({ active: true }) },
+        { data: () => ({ active: false }) },
+      ],
+      foodOrders: [
+        { data: () => ({ status: 'pending' }) },
+        { data: () => ({ status: 'delivered' }) },
+      ],
+      issueReports: [
+        { data: () => ({ status: 'open' }) },
+      ],
+      emergencyRequests: [
+        { data: () => ({ status: 'active' }) },
+      ],
+    };
+    const res = await withStaleTelemetryCache(() =>
+      request(app)
+        .post('/api/ai/command')
+        .set('Authorization', 'Bearer fake-token')
+        .send({ text: 'available volunteers' })
+    );
+    expect(res.status).toBe(200);
+    // Local engine's "volunteer" branch reports volunteersActive (2 of 3
+    // seeded docs have active !== false).
+    expect(res.body.response).toMatch(/2 volunteers synchronized/);
   });
 });
 

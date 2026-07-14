@@ -12,3 +12,4 @@
 - [Nexus security/a11y pass decisions](nexus-security-a11y-pass.md) — CSRF model for bearer-token APIs, helmet vs custom headers, opt-in App Check, transitive audit vulns, shared modal a11y hook, coverage gap on dashboards.
 - [Nexus AI fallback verification](nexus-ai-fallback-verification.md) — n8n webhook-test URLs are single-fire debug-only; use /api/ai/demo-command to prove real source (n8n/Gemini/local) with actual evidence.
 - [Nexus security hardening pass](nexus-security-hardening-pass.md) — firebase.ts fail-fast, prod CSP nonce (no unsafe-inline), auto-generated volunteer passwords, pre-existing test:rules vitest-exclude gap.
+- [Nexus telemetry test-cache masking](nexus-telemetry-test-cache-masking.md) — getStadiumTelemetry's 10s cache can make "Firestore failure" tests pass without ever reaching Firestore; force Date.now() ahead to bust it.

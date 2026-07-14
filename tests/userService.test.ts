@@ -337,6 +337,21 @@ describe('adminCreateVolunteer', () => {
     expect(authMod.createUserWithEmailAndPassword).not.toHaveBeenCalled();
   });
 
+  it('rejects a password shorter than 6 characters before touching Firebase Auth', async () => {
+    const authMod = await import('firebase/auth');
+    await expect(adminCreateVolunteer('Short PW', 'shortpw@test.com', 'ab1', 'Gate A'))
+      .rejects.toThrow('Password must be at least 6 characters.');
+    expect(authMod.createUserWithEmailAndPassword).not.toHaveBeenCalled();
+  });
+
+  it('rejects a password longer than 128 characters before touching Firebase Auth', async () => {
+    const authMod = await import('firebase/auth');
+    const longPassword = 'a1'.repeat(65); // 130 characters
+    await expect(adminCreateVolunteer('Long PW', 'longpw@test.com', longPassword, 'Gate A'))
+      .rejects.toThrow('Password must be 128 characters or fewer.');
+    expect(authMod.createUserWithEmailAndPassword).not.toHaveBeenCalled();
+  });
+
   it('still cleans up the secondary app when profile creation fails after auth succeeds', async () => {
     const appMod = await import('firebase/app');
     mockSetDoc.mockRejectedValueOnce(new Error('Firestore write failed'));
