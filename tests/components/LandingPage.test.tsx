@@ -145,4 +145,18 @@ describe('LandingPage', () => {
     fireEvent.click(screen.getByText(/try demo mode/i));
     expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
   });
+
+  it('closes the demo picker when the backdrop overlay is clicked (line 233)', () => {
+    render(<LandingPage {...defaultProps} />);
+    fireEvent.click(screen.getByText(/try demo mode/i));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // The outer motion.div (rendered as a plain div) has onClick=setShowDemoPicker(false).
+    // The inner dialog has onClick=stopPropagation, so clicking the parent directly
+    // (not the dialog itself) fires the close handler without propagation interference.
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(dialog.parentElement!);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

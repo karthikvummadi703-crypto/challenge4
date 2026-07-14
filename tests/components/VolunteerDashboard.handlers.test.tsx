@@ -358,4 +358,76 @@ describe('VolunteerDashboard — handleCompleteTask', () => {
     );
     expect(typeof (taskCall?.[2] as Record<string, unknown>)?.deliveryTimeMs).toBe('number');
   });
+
+  it('catches updateRecord failure without crashing (line 168)', async () => {
+    render(<VolunteerDashboard onLogout={vi.fn()} />);
+    pushTasks([{
+      id: 'tc-err', type: 'Seat Issue', status: 'accepted',
+      assignedTo: 'VOL-ALEX', linkedId: 'issue-x',
+      timestamp: new Date(Date.now() - 2000).toISOString(),
+    }]);
+    await waitFor(() => expect(screen.getByTestId('complete-tc-err')).toBeInTheDocument());
+    // Make the first updateRecord call (tasks) reject — this triggers the catch
+    mockUpdateRecord.mockRejectedValueOnce(new Error('PERMISSION_DENIED'));
+
+    await expect(
+      act(async () => { fireEvent.click(screen.getByTestId('complete-tc-err')); })
+    ).resolves.not.toThrow();
+  });
+});
+
+// ── Error catch paths not covered by existing tests ────────────────────────────
+
+describe('VolunteerDashboard — loadVolunteers Firestore error (line 86)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSubscribe.mockReturnValue(vi.fn());
+    mockUpdateRecord.mockResolvedValue(undefined);
+    mockUseAuth.mockReturnValue(volAuth);
+    mockUseDemoMode.mockReturnValue(noDemo);
+  });
+
+  it('does not crash when getDocs throws during volunteer load (line 86)', async () => {
+    const { getDocs } = await import('firebase/firestore');
+    vi.mocked(getDocs).mockRejectedValueOnce(new Error('Firestore unavailable'));
+
+    // Render — the useEffect calls loadVolunteers which calls getDocs
+    await expect(
+      act(async () => { render(<VolunteerDashboard onLogout={vi.fn()} />); })
+    ).resolves.not.toThrow();
+  });
+});
+
+describe('VolunteerDashboard — handleQuickLogin error (lines 145-146)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSubscribe.mockReturnValue(vi.fn());
+    mockUpdateRecord.mockResolvedValue(undefined);
+    // Quick-login is only visible in the UNAUTHENTICATED state.
+    // Using volAuth (user present) would show the task list, not the login form.
+    mockUseAuth.mockReturnValue(unauthAuth);
+    mockUseDemoMode.mockReturnValue(noDemo);
+  });
+
+  it('does not crash when quick-login loginUser rejects (lines 145-146)', async () => {
+    const { getDocs } = await import('firebase/firestore');
+    // Provide a volunteer doc so the quick-login shortcut button appears
+    vi.mocked(getDocs).mockResolvedValue({
+      forEach: (cb: (d: unknown) => void) => {
+        cb({ id: 'ql1', data: () => ({ fullName: 'Quick Login Vol', uid: 'ql1', email: 'ql@test.com' }) });
+      },
+    } as unknown as Awaited<ReturnType<typeof getDocs>>);
+
+    mockLoginUser.mockRejectedValueOnce(new Error('auth/wrong-password'));
+
+    render(<VolunteerDashboard onLogout={vi.fn()} />);
+    await waitFor(() => expect(screen.queryByTestId('quick-login-ql1')).toBeInTheDocument());
+
+    await expect(
+      act(async () => { fireEvent.click(screen.getByTestId('quick-login-ql1')); })
+    ).resolves.not.toThrow();
+
+    // loginUser was attempted; the catch block covered lines 145-146
+    expect(mockLoginUser).toHaveBeenCalledWith('ql@test.com', 'password123', 'volunteer');
+  });
 });

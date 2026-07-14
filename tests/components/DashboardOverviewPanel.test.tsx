@@ -154,3 +154,116 @@ describe('DashboardOverviewPanel', () => {
     expect(volunteerCard.querySelector('.text-xl')).toHaveTextContent('1');
   });
 });
+
+// ── sendMessage — guard and form submission (lines 53, 155-183) ───────────────
+
+describe('DashboardOverviewPanel — sendMessage interactions', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('calls onSendCommand when the form is submitted with text', async () => {
+    const onSendCommand = vi.fn().mockResolvedValue({
+      id: 'ai-reply',
+      sender: 'ai' as const,
+      text: 'Nexus telemetry nominal.',
+    });
+    const onMessagesChange = vi.fn();
+    render(
+      <DashboardOverviewPanel
+        {...defaultProps}
+        onSendCommand={onSendCommand}
+        onMessagesChange={onMessagesChange}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Ask command assistant anything...');
+    fireEvent.change(input, { target: { value: 'status update' } });
+    await act(async () => {
+      fireEvent.submit(input.closest('form')!);
+    });
+
+    expect(onSendCommand).toHaveBeenCalledWith('status update');
+  });
+
+  it('does not call onSendCommand when input is empty (guard line 53)', async () => {
+    const onSendCommand = vi.fn();
+    render(
+      <DashboardOverviewPanel {...defaultProps} onSendCommand={onSendCommand} />
+    );
+
+    // Submit with no text (empty input — the guard `!text.trim()` returns early)
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByPlaceholderText('Ask command assistant anything...').closest('form')!
+      );
+    });
+
+    expect(onSendCommand).not.toHaveBeenCalled();
+  });
+
+  it('calls onSendCommand when an AI chip button is clicked', async () => {
+    const onSendCommand = vi.fn().mockResolvedValue({
+      id: 'ai-chip-reply',
+      sender: 'ai' as const,
+      text: 'Summary: 0 open issues.',
+    });
+    render(
+      <DashboardOverviewPanel {...defaultProps} onSendCommand={onSendCommand} />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /summarize today's incidents/i }));
+    });
+
+    expect(onSendCommand).toHaveBeenCalledWith("Summarize today's incidents");
+  });
+
+  it('calls onMessagesChange with the AI reply message after onSendCommand resolves', async () => {
+    const aiMsg = { id: 'ai-2', sender: 'ai' as const, text: 'Gate A is clear.' };
+    const onSendCommand = vi.fn().mockResolvedValue(aiMsg);
+    const onMessagesChange = vi.fn();
+    render(
+      <DashboardOverviewPanel
+        {...defaultProps}
+        onSendCommand={onSendCommand}
+        onMessagesChange={onMessagesChange}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Ask command assistant anything...');
+    fireEvent.change(input, { target: { value: 'gate status' } });
+    await act(async () => {
+      fireEvent.submit(input.closest('form')!);
+    });
+
+    // onMessagesChange is called once for the user message, once for the AI reply
+    expect(onMessagesChange).toHaveBeenCalledTimes(2);
+    const secondCall = onMessagesChange.mock.calls[1][0] as (prev: unknown[]) => unknown[];
+    expect(secondCall([])).toContain(aiMsg);
+  });
+
+  it('calls onSendCommand with the correct text and passes the result to onMessagesChange', async () => {
+    // This test verifies the happy-path flow end-to-end within sendMessage,
+    // complementing the empty-guard and chip-click tests above.
+    const aiMsg = { id: 'end-to-end', sender: 'ai' as const, text: 'Stadium clear.' };
+    const onSendCommand = vi.fn().mockResolvedValueOnce(aiMsg);
+    const onMessagesChange = vi.fn();
+    render(
+      <DashboardOverviewPanel
+        {...defaultProps}
+        onSendCommand={onSendCommand}
+        onMessagesChange={onMessagesChange}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Ask command assistant anything...');
+    fireEvent.change(input, { target: { value: 'end-to-end check' } });
+    await act(async () => { fireEvent.submit(input.closest('form')!); });
+
+    expect(onSendCommand).toHaveBeenCalledWith('end-to-end check');
+    // onMessagesChange should have been called twice:
+    // once for the user message, once with the AI reply
+    expect(onMessagesChange).toHaveBeenCalledTimes(2);
+    const aiAppend = onMessagesChange.mock.calls[1][0] as (p: unknown[]) => unknown[];
+    expect(aiAppend([])).toContain(aiMsg);
+  });
+});

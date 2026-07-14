@@ -696,6 +696,105 @@ describe('OrganizerDashboard — handleRemoveVolunteer error path', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Alert filter branches (lines 152 and 173 in OrganizerDashboard.tsx)
+//
+// The filter callbacks inside setStats are only exercised when recentAlerts
+// is non-empty.  We fire two subscription callbacks in sequence so that the
+// second call's filter runs over the alerts produced by the first call.
+
+describe('OrganizerDashboard — subscription alert filter branches (lines 152, 173)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.keys(subscribeCapture).forEach(k => delete subscribeCapture[k]);
+    mockSubscribeHandler.mockImplementation((name: string, cb: (snap: unknown) => void) => {
+      subscribeCapture[name] = cb;
+      return vi.fn();
+    });
+    mockAddRecord.mockResolvedValue({ id: 'new-id' });
+    mockDeleteRecord.mockResolvedValue(undefined);
+    mockAdminCreateVolunteer.mockResolvedValue({ uid: 'vol-new' });
+    mockVerifyAdminAccess.mockResolvedValue(true);
+    mockPublishConfig.mockResolvedValue({ id: 'cfg' });
+  });
+
+  function makeIssueSnap(ids: string[]) {
+    return {
+      docs: ids.map(id => ({ id, data: () => ({ status: 'open', description: `Issue ${id}` }) })),
+      size: ids.length,
+      forEach: (cb: (d: unknown) => void) =>
+        ids.forEach(id => cb({ id, data: () => ({ status: 'open', description: `Issue ${id}` }) })),
+    };
+  }
+
+  function makeEmergencySnap(ids: string[]) {
+    return {
+      docs: ids.map(id => ({ id, data: () => ({ status: 'active', seat: `A-${id}` }) })),
+      size: ids.length,
+      forEach: (cb: (d: unknown) => void) =>
+        ids.forEach(id => cb({ id, data: () => ({ status: 'active', seat: `A-${id}` }) })),
+    };
+  }
+
+  it('filter `a.type === "Emergency"` on issueReports (line 152) runs when alerts exist', async () => {
+    renderAuthed();
+    // Step 1: fire emergencyRequests — adds Emergency alerts to recentAlerts
+    act(() => { subscribeCapture['emergencyRequests']?.(makeEmergencySnap(['e1'])); });
+    // Step 2: fire issueReports — the setState filter (line 152) runs on the
+    //         non-empty recentAlerts produced by step 1
+    act(() => { subscribeCapture['issueReports']?.(makeIssueSnap(['i1', 'i2'])); });
+
+    const panel = screen.getByTestId('dashboard-overview-stub');
+    // We have 1 Emergency (kept by filter) + 2 Issues (new) = 3 alerts total
+    await waitFor(() => expect(panel).toHaveAttribute('data-alerts', '3'));
+  });
+
+  it('filter `a.type !== "Emergency"` on emergencyRequests (line 173) runs when alerts exist', async () => {
+    renderAuthed();
+    // Step 1: fire issueReports — adds Issue alerts to recentAlerts
+    act(() => { subscribeCapture['issueReports']?.(makeIssueSnap(['i10', 'i11'])); });
+    // Step 2: fire emergencyRequests — the setState filter (line 173) runs on the
+    //         non-empty recentAlerts produced by step 1
+    act(() => { subscribeCapture['emergencyRequests']?.(makeEmergencySnap(['e10'])); });
+
+    const panel = screen.getByTestId('dashboard-overview-stub');
+    // 2 Issues (kept by filter) + 1 Emergency (new) = 3 alerts total
+    await waitFor(() => expect(panel).toHaveAttribute('data-alerts', '3'));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// handleSaveMatch error catch (line 235 in OrganizerDashboard.tsx)
+
+describe('OrganizerDashboard — handleSaveMatch Firestore error (line 235)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.keys(subscribeCapture).forEach(k => delete subscribeCapture[k]);
+    mockSubscribeHandler.mockImplementation((name: string, cb: (snap: unknown) => void) => {
+      subscribeCapture[name] = cb;
+      return vi.fn();
+    });
+    mockVerifyAdminAccess.mockResolvedValue(true);
+    mockPublishConfig.mockResolvedValue({ id: 'cfg' });
+  });
+
+  it('does not crash when addRecord rejects on handleSaveMatch (line 235)', async () => {
+    mockAddRecord.mockRejectedValueOnce(new Error('Firestore match write failed'));
+    renderAuthed();
+    fireEvent.click(screen.getByTestId('tab-setup'));
+
+    await expect(
+      act(async () => {
+        fireEvent.submit(screen.getByTestId('save-match-form'));
+      })
+    ).resolves.not.toThrow();
+
+    expect(mockAddRecord).toHaveBeenCalledWith(
+      'matches', expect.objectContaining({ published: true })
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // verifyAdminAccess guard
 // ─────────────────────────────────────────────────────────────────────────────
 describe('OrganizerDashboard — verifyAdminAccess guard', () => {

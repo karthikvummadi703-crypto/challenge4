@@ -143,3 +143,80 @@ describe('FanAIChat', () => {
     });
   });
 });
+
+// ── askAI early-return guard (line 33) ────────────────────────────────────────
+// `if (!text.trim() || isAiAnswering) return;` prevents empty/blank messages
+// and double-submissions while a response is still in flight.
+
+describe('FanAIChat — askAI early-return guard', () => {
+  const guardChatLogs: import('../../src/types').ChatMessage[] = [
+    { id: 'msg-guard-1', sender: 'ai', text: 'Welcome to Nexus AI.', timestamp: new Date().toISOString() },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSendAICommand.mockResolvedValue({ response: 'ok', source: 'ai' });
+  });
+
+  it('does not call sendAICommand when the form is submitted with an empty input', async () => {
+    const onAppendMessage = vi.fn();
+    render(<FanAIChat chatLogs={guardChatLogs} onAppendMessage={onAppendMessage} />);
+
+    // Submit without typing anything — chatInput stays ''
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByPlaceholderText('Ask AI assistant...').closest('form')!
+      );
+    });
+
+    expect(mockSendAICommand).not.toHaveBeenCalled();
+    expect(onAppendMessage).not.toHaveBeenCalled();
+  });
+
+  it('does not call sendAICommand when the form is submitted with whitespace only', async () => {
+    const onAppendMessage = vi.fn();
+    render(<FanAIChat chatLogs={guardChatLogs} onAppendMessage={onAppendMessage} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Ask AI assistant...'),
+      { target: { value: '   ' } }
+    );
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByPlaceholderText('Ask AI assistant...').closest('form')!
+      );
+    });
+
+    expect(mockSendAICommand).not.toHaveBeenCalled();
+  });
+
+  it('blocks a second quick-query click while the first is still answering', async () => {
+    // Make sendAICommand hang so isAiAnswering stays true after the first call
+    let resolveFirst!: (v: { response: string; source: string }) => void;
+    mockSendAICommand.mockImplementationOnce(
+      () => new Promise(resolve => { resolveFirst = resolve; })
+    );
+
+    const onAppendMessage = vi.fn();
+    render(<FanAIChat chatLogs={guardChatLogs} onAppendMessage={onAppendMessage} />);
+
+    // First quick-query click — sets isAiAnswering = true, hangs in flight
+    await act(async () => {
+      fireEvent.click(screen.getByText('Where is the nearest food court?'));
+    });
+
+    // Reset call counts so we can assert the second click is blocked
+    mockSendAICommand.mockClear();
+    onAppendMessage.mockClear();
+
+    // Second quick-query click while still answering — should hit the guard
+    await act(async () => {
+      fireEvent.click(screen.getByText('Where is the nearest washroom?'));
+    });
+
+    expect(mockSendAICommand).not.toHaveBeenCalled();
+
+    // Clean up: resolve the hanging promise
+    resolveFirst({ response: 'Level 1', source: 'ai' });
+  });
+});

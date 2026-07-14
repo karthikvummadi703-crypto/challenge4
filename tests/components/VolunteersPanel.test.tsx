@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 
 const { default: VolunteersPanel } = await import('../../src/components/organizer/VolunteersPanel');
 
@@ -146,5 +146,51 @@ describe('VolunteersPanel', () => {
   it('shows volunteer count in table header', () => {
     render(<VolunteersPanel {...defaultProps} volunteersList={sampleVolunteers} />);
     expect(screen.getByText(/2 volunteers cataloged/i)).toBeInTheDocument();
+  });
+});
+
+// ── handleCopyPassword (lines 42-43) ─────────────────────────────────────────
+// The copy button calls navigator.clipboard.writeText. Because this is a
+// convenience feature (not a requirement), failures are caught and swallowed.
+
+describe('VolunteersPanel — handleCopyPassword (clipboard)', () => {
+  afterEach(() => {
+    // Restore real clipboard if stubbed
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: undefined,
+    });
+  });
+
+  it('calls navigator.clipboard.writeText with the generated password on copy click', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<VolunteersPanel {...defaultProps} newVolunteerPassword="Xy7#kQp2Lm9!Zt" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy generated password/i }));
+    });
+
+    expect(writeText).toHaveBeenCalledWith('Xy7#kQp2Lm9!Zt');
+  });
+
+  it('does not throw when clipboard.writeText rejects (non-secure context)', async () => {
+    // Simulate clipboard API unavailable by making writeText throw
+    const writeText = vi.fn().mockRejectedValue(new Error('NotAllowedError'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<VolunteersPanel {...defaultProps} newVolunteerPassword="SecretPwd" />);
+    // Should not propagate — the catch is intentionally silent
+    await expect(
+      act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /copy generated password/i }));
+      })
+    ).resolves.not.toThrow();
   });
 });

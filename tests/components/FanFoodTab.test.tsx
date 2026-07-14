@@ -89,3 +89,43 @@ describe('FanFoodTab', () => {
     expect(screen.getByRole('button', { name: /Place Catering Order/i })).not.toBeDisabled();
   });
 });
+
+// ── Cart with unknown item ID (lines 31, 86) ──────────────────────────────────
+// When the cart contains an ID that is not in FOOD_MENU:
+//   line 31 — reduce fallback: `item ? price*qty : 0`  (covers the `: 0` branch)
+//   line 86 — map early-return: `if (!item) return null`
+
+describe('FanFoodTab — cart with unknown item id', () => {
+  // Re-define props here so this describe is self-contained (defaultProps is
+  // scoped to the sibling describe block above and not accessible here).
+  const unknownItemProps = {
+    cart: {},
+    onUpdateCartQty: vi.fn(),
+    onPlaceOrder: vi.fn((e: React.FormEvent) => e.preventDefault()),
+    orderSuccess: false,
+    isSubmitting: false,
+    seatNumber: 'A-001',
+  };
+
+  it('shows $0.00 total when cart contains only an unknown item', () => {
+    render(<FanFoodTab {...unknownItemProps} cart={{ 'unknown-item-99': 2 }} />);
+    // Total must be $0.00 because the unknown id has no matching FOOD_MENU entry
+    expect(screen.getByText('$0.00')).toBeInTheDocument();
+  });
+
+  it('does not render a cart row for an unknown item id (returns null)', () => {
+    render(<FanFoodTab {...unknownItemProps} cart={{ 'unknown-item-99': 3 }} />);
+    // No item name rendered for the unknown id
+    expect(screen.queryByText(/unknown-item-99/)).not.toBeInTheDocument();
+  });
+
+  it('correctly calculates total when mixing a known and an unknown item', () => {
+    // item-1 (Veg Burger $6.99) × 1 = $6.99
+    // item-4 (Coke      $2.49) × 1 = $2.49
+    // ghost-id (unknown)       × 5 = $0.00   ← line 31 `0` branch + line 86 null guard
+    // Total = $9.48 — unique value not equal to any individual cart-row total,
+    // so getByText finds exactly ONE element (the overall subtotal display).
+    render(<FanFoodTab {...unknownItemProps} cart={{ 'item-1': 1, 'item-4': 1, 'ghost-id': 5 }} />);
+    expect(screen.getByText('$9.48')).toBeInTheDocument();
+  });
+});

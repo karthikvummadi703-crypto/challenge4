@@ -7,7 +7,7 @@ vi.mock('firebase/auth', () => ({
 }));
 vi.mock('../src/firebase', () => ({ auth: { currentUser: null } }));
 
-const { getFriendlyErrorMessage, getCurrentUser } = await import('../src/services/authService');
+const { getFriendlyErrorMessage, getCurrentUser, logout } = await import('../src/services/authService');
 
 describe('getFriendlyErrorMessage', () => {
   it('returns a generic message for null / undefined errors', () => {
@@ -112,5 +112,17 @@ describe('getFriendlyErrorMessage', () => {
 describe('getCurrentUser', () => {
   it('returns null when no Firebase user is signed in', () => {
     expect(getCurrentUser()).toBeNull();
+  });
+});
+
+describe('logout', () => {
+  it('calls signOut on the Firebase auth instance', async () => {
+    const { signOut } = await import('firebase/auth');
+    await logout();
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it('resolves without throwing', async () => {
+    await expect(logout()).resolves.toBeUndefined();
   });
 });

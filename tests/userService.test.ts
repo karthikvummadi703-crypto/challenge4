@@ -372,3 +372,64 @@ describe('updateLastLogin', () => {
     await expect(updateLastLogin('uid-any', 'fan')).resolves.toBeUndefined();
   });
 });
+
+// ── verifyAdminAccess — Path 2 (legacy email key) ─────────────────────────────
+// Lines 231-234: migration setDoc inside the email-key path is best-effort;
+// the function still returns true even when the migration write fails.
+
+describe('verifyAdminAccess — Path 2 (legacy email-keyed doc)', () => {
+  it('returns true when admin doc is found by email key', async () => {
+    seedDoc('admins', 'admin@test.com', { email: 'admin@test.com', role: 'admin' });
+    const result = await verifyAdminAccess('uid-without-admins-doc', 'admin@test.com');
+    expect(result).toBe(true);
+  });
+
+  it('still returns true when the UID-key migration setDoc fails (best-effort)', async () => {
+    seedDoc('admins', 'admin-migrate@test.com', { email: 'admin-migrate@test.com' });
+    // First setDoc call is the migration — make it fail
+    mockSetDoc.mockRejectedValueOnce(new Error('PERMISSION_DENIED — migration write'));
+    const result = await verifyAdminAccess('uid-no-doc', 'admin-migrate@test.com');
+    // Must still grant access despite the migration failure
+    expect(result).toBe(true);
+  });
+});
+
+// ── verifyAdminAccess — Path 3 (query by email field) ─────────────────────────
+// Lines 242-245: same best-effort migration pattern for the getDocs() query path.
+
+describe('verifyAdminAccess — Path 3 (email-field query fallback)', () => {
+  it('returns true when admin doc is found by email-field query', async () => {
+    mockGetDocs.mockResolvedValueOnce({
+      empty: false,
+      docs: [{ data: () => ({ email: 'query@test.com', role: 'admin' }) }],
+    });
+    const result = await verifyAdminAccess('uid-query-path', 'query@test.com');
+    expect(result).toBe(true);
+  });
+
+  it('still returns true when the migration setDoc fails on the query path', async () => {
+    mockGetDocs.mockResolvedValueOnce({
+      empty: false,
+      docs: [{ data: () => ({ email: 'qfail@test.com', role: 'admin' }) }],
+    });
+    mockSetDoc.mockRejectedValueOnce(new Error('migration setDoc failed'));
+    const result = await verifyAdminAccess('uid-qfail', 'qfail@test.com');
+    expect(result).toBe(true);
+  });
+});
+
+// ── findUserDocument — Strategy 2 via getUserRole ─────────────────────────────
+// Lines 131-134: migration setDoc inside the email-key strategy is best-effort;
+// the function returns the located doc even when the write fails.
+
+describe('getUserRole — findUserDocument Strategy 2 (email-keyed doc, migration catch)', () => {
+  it('returns the correct role when the email-key doc exists and migration setDoc throws', async () => {
+    // The auth mock provides currentUser.email = 'test@test.com'.
+    // Seeding 'fans/test@test.com' exercises Strategy 2 inside findUserDocument.
+    seedDoc('fans', 'test@test.com', { role: 'fan', email: 'test@test.com' });
+    // Make the migration setDoc throw so the catch block (lines 131-134) is hit.
+    mockSetDoc.mockRejectedValueOnce(new Error('migration write failed'));
+    const role = await getUserRole('uid-no-direct-fan-doc');
+    expect(role).toBe('fan');
+  });
+});

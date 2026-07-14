@@ -244,3 +244,21 @@ describe('BlurText — onAnimationComplete', () => {
     expect(screen.getByText('Done')).toBeInTheDocument();
   });
 });
+
+// ── Default easing prop (line 64) ────────────────────────────────────────────
+// When `easing` is omitted the component uses a default linear easing function
+// `t => t`.  Rendering without the prop exercises this default assignment.
+
+describe('BlurText — default easing prop (line 64)', () => {
+  it('renders correctly when easing prop is not supplied (uses default)', () => {
+    render(<BlurText text="DefaultEase" animateBy="words" />);
+    expect(screen.getByText('DefaultEase')).toBeInTheDocument();
+  });
+
+  it('renders correctly when easing prop is not supplied for letter animation', () => {
+    render(<BlurText text="AB" animateBy="letters" />);
+    // Both letters must render
+    expect(screen.getByText('A')).toBeInTheDocument();
+    expect(screen.getByText('B')).toBeInTheDocument();
+  });
+});

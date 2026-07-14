@@ -482,6 +482,138 @@ describe('FanDashboard — handleSubmitIssue (authenticated)', () => {
   });
 });
 
+// ── Error catch paths (lines 142, 191, 234, 272) ─────────────────────────────
+// Each of these tests exercises the `catch` block of its respective handler,
+// ensuring the error is swallowed / logged rather than propagated to React.
+
+describe('FanDashboard — handleAuthSubmit error catch (line 142)', () => {
+  beforeEach(() => {
+    // Unauthenticated state — shows FanAuth stub so we can call capturedOnAuthSubmit
+    mockUseAuth.mockReturnValue(makeAuth({ user: null, profile: null, role: null }));
+  });
+
+  it('catches the error from signUpFan without crashing (line 142)', async () => {
+    render(<FanDashboard onLogout={vi.fn()} stadiumBg="" />);
+    // Provide valid credentials so client-side validation passes
+    await act(async () => {
+      capturedSetEmail?.('fan@example.com');
+      capturedSetPassword?.('validpassword');
+      capturedSetName?.('Jane Doe');
+    });
+    mockSignUpFan.mockRejectedValueOnce(new Error('auth/email-already-in-use'));
+
+    await expect(
+      act(async () => {
+        capturedOnAuthSubmit?.({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      })
+    ).resolves.not.toThrow();
+
+    // signUpFan was attempted despite the rejection being caught
+    expect(mockSignUpFan).toHaveBeenCalledOnce();
+  });
+
+  it('catches the error from loginUser without crashing when in login mode (line 142)', async () => {
+    render(<FanDashboard onLogout={vi.fn()} stadiumBg="" />);
+    await act(async () => { capturedOnToggleMode?.(); }); // switch to login mode
+    await act(async () => {
+      capturedSetEmail?.('fan@example.com');
+      capturedSetPassword?.('wrongpass');
+    });
+    mockLoginUser.mockRejectedValueOnce(new Error('auth/wrong-password'));
+
+    await expect(
+      act(async () => {
+        capturedOnAuthSubmit?.({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      })
+    ).resolves.not.toThrow();
+
+    expect(mockLoginUser).toHaveBeenCalledOnce();
+  });
+});
+
+describe('FanDashboard — handlePlaceOrder error catch (line 191)', () => {
+  const fanUser    = { uid: 'u5', email: 'fan@test.com', displayName: 'Fan' };
+  const fanProfile = { uid: 'u5', email: 'fan@test.com', role: 'fan' as const, fullName: 'Fan', seatNumber: 'C-010' };
+
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue(makeAuth({ user: fanUser, profile: fanProfile, role: 'fan' }));
+    mockCreateRecordWithTask.mockResolvedValue({ id: 'order-ok' });
+  });
+
+  it('catches Firestore failure in handlePlaceOrder without crashing (line 191)', async () => {
+    render(<FanDashboard onLogout={vi.fn()} stadiumBg="" />);
+    fireEvent.click(screen.getByTestId('tab-food'));
+
+    // Add an item to trigger cartSubtotal > 0
+    act(() => { capturedOnUpdateCartQty?.('burger-1', 1); });
+    mockCreateRecordWithTask.mockRejectedValueOnce(new Error('Firestore write failed'));
+
+    await expect(
+      act(async () => {
+        capturedOnPlaceOrder?.({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      })
+    ).resolves.not.toThrow();
+
+    expect(mockCreateRecordWithTask).toHaveBeenCalledWith(
+      'foodOrders', expect.any(Object), expect.any(Object)
+    );
+  });
+});
+
+describe('FanDashboard — handleEmergencySubmit error catch (line 234)', () => {
+  const fanUser    = { uid: 'u6', email: 'fan@test.com', displayName: 'Fan' };
+  const fanProfile = { uid: 'u6', email: 'fan@test.com', role: 'fan' as const, fullName: 'Fan', seatNumber: 'B-021' };
+
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue(makeAuth({ user: fanUser, profile: fanProfile, role: 'fan' }));
+    mockCreateRecordWithTask.mockResolvedValue({ id: 'emrg-ok' });
+  });
+
+  it('catches Firestore failure in handleEmergencySubmit without crashing (line 234)', async () => {
+    render(<FanDashboard onLogout={vi.fn()} stadiumBg="" />);
+    fireEvent.click(screen.getByTestId('tab-medical'));
+    // Emergency seat is pre-populated from fanProfile.seatNumber — no need to set it
+    mockCreateRecordWithTask.mockRejectedValueOnce(new Error('Firestore emergency write failed'));
+
+    await expect(
+      act(async () => {
+        capturedOnEmergencySubmit?.({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      })
+    ).resolves.not.toThrow();
+
+    expect(mockCreateRecordWithTask).toHaveBeenCalledWith(
+      'emergencyRequests', expect.any(Object), expect.any(Object)
+    );
+  });
+});
+
+describe('FanDashboard — handleSubmitIssue error catch (line 272)', () => {
+  const fanUser    = { uid: 'u7', email: 'fan@test.com', displayName: 'Fan' };
+  const fanProfile = { uid: 'u7', email: 'fan@test.com', role: 'fan' as const, fullName: 'Fan', seatNumber: 'D-099' };
+
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue(makeAuth({ user: fanUser, profile: fanProfile, role: 'fan' }));
+    mockCreateRecordWithTask.mockResolvedValue({ id: 'issue-ok' });
+  });
+
+  it('catches Firestore failure in handleSubmitIssue without crashing (line 272)', async () => {
+    render(<FanDashboard onLogout={vi.fn()} stadiumBg="" />);
+    fireEvent.click(screen.getByTestId('tab-issue'));
+    act(() => { capturedOnDescriptionChange?.('Seat cushion missing'); });
+    mockCreateRecordWithTask.mockRejectedValueOnce(new Error('Firestore issue write failed'));
+
+    await expect(
+      act(async () => {
+        capturedOnIssueSubmit?.({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      })
+    ).resolves.not.toThrow();
+
+    expect(mockCreateRecordWithTask).toHaveBeenCalledWith(
+      'issueReports', expect.any(Object), expect.any(Object)
+    );
+  });
+});
+
 // ── appendChatMessage ─────────────────────────────────────────────────────────
 describe('FanDashboard — appendChatMessage (authenticated)', () => {
   const fanUser    = { uid: 'u4', email: 'fan@test.com', displayName: 'Fan' };
