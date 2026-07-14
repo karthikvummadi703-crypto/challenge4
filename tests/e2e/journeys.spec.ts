@@ -1,19 +1,53 @@
 /**
  * Nexus AI — core user journey E2E tests (Playwright / Chromium).
  *
- * All four journeys run against Demo Mode so no real Firebase auth or
- * Firestore writes are involved.  `reducedMotion: 'reduce'` (set in
- * playwright.config.ts) makes the SplashScreen call its `onComplete`
- * callback immediately, so every test starts from the landing page without
- * any artificial wait.
- *
- * Journey 1 — Fan:      land → Demo (Fan) → view seat → add food → place order → confirm
+ * Journey 1 — Fan:       land → Demo (Fan) → view seat → add food → place order → confirm
  * Journey 2 — Volunteer: Demo (Volunteer) → view tasks → complete → confirm cleared
- * Journey 3 — Admin:    Demo (Organizer) → dashboard analytics → volunteer panel
- * Journey 4 — Auth:     real Organizer login with invalid credentials → error shown
+ * Journey 3 — Admin:     Demo (Organizer) → dashboard analytics → volunteer panel
+ * Journey 4 — Auth:      real Organizer login with invalid credentials → error shown
+ *
+ * Journeys 1–3 use Demo Mode exclusively — no real Firebase Auth or Firestore
+ * calls are made.  They pass in CI with placeholder Firebase credentials.
+ *
+ * Journey 4 makes a real Firebase Auth call and therefore requires real
+ * Firebase credentials.  When only placeholder values are detected the test is
+ * skipped with a visible reason rather than failing confusingly.
+ *
+ * ── What enables Journey 4 in GitHub Actions CI ─────────────────────────────
+ * Add the following as GitHub repo secrets
+ * (Settings → Secrets and variables → Actions → New repository secret):
+ *
+ *   VITE_FIREBASE_API_KEY          — Firebase Web API key
+ *   VITE_FIREBASE_AUTH_DOMAIN      — e.g. your-project.firebaseapp.com
+ *   VITE_FIREBASE_PROJECT_ID       — Firebase project ID
+ *   VITE_FIREBASE_STORAGE_BUCKET   — e.g. your-project.firebasestorage.app
+ *   VITE_FIREBASE_MESSAGING_SENDER_ID — numeric sender ID
+ *   VITE_FIREBASE_APP_ID           — Firebase app ID
+ *   VITE_FIREBASE_MEASUREMENT_ID   — GA measurement ID (optional but set if available)
+ *
+ * When these secrets are set the ci.yml env block picks them up via
+ * `${{ secrets.VITE_FIREBASE_API_KEY }}` and Journey 4 will run automatically.
+ * See also: replit.md § "CI / GitHub Secrets" and .github/workflows/ci.yml.
  */
 
 import { test, expect, Page } from '@playwright/test';
+
+// ─── Firebase credential detection ──────────────────────────────────────────
+//
+// The CI workflow sets VITE_FIREBASE_API_KEY to 'ci-placeholder-api-key' when
+// the real GitHub secret is absent.  We detect this so Journey 4 can self-skip
+// gracefully rather than producing a cryptic Firebase network error.
+
+/** Returns true only when the environment contains a real (non-placeholder) Firebase API key. */
+function hasRealFirebaseCredentials(): boolean {
+  const key = process.env['VITE_FIREBASE_API_KEY'] ?? '';
+  return (
+    key.length > 0 &&
+    !key.startsWith('ci-placeholder') &&
+    !key.startsWith('fake-') &&
+    key !== 'fake-api-key'
+  );
+}
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -155,11 +189,26 @@ test.describe('Admin (Organizer) journey', () => {
 });
 
 // ─── Journey 4: Admin login rejection ────────────────────────────────────────
+//
+// This test makes a real Firebase Auth network call.  When only placeholder
+// credentials are present (CI without repo secrets) the call would time out or
+// return an undifferentiated network error, producing a false failure.
+// We detect the placeholder case and skip with a clear, visible reason instead.
 
 test.describe('Admin login rejection', () => {
   test(
     'attempting real Organizer login with invalid credentials shows an error — access denied',
     async ({ page }) => {
+      // ── Guard: skip when real Firebase credentials are not available ────────
+      // To run this test in GitHub Actions CI add the VITE_FIREBASE_* variables
+      // listed at the top of this file as GitHub repo secrets.
+      test.skip(
+        !hasRealFirebaseCredentials(),
+        'Journey 4 skipped: VITE_FIREBASE_API_KEY is a CI placeholder. ' +
+        'Add the real VITE_FIREBASE_* values as GitHub repo secrets ' +
+        '(see replit.md § "CI / GitHub Secrets") to enable this test in CI.',
+      );
+
       await goToLanding(page);
 
       // ── Step 1: Click the real "Organizer Login" gateway (not Demo Mode) ──
@@ -179,8 +228,7 @@ test.describe('Admin login rejection', () => {
 
       // ── Step 4: An error must appear — the role="alert" paragraph is only
       // rendered when loginError is non-empty.  We do not assert the exact
-      // message text because the wording depends on the Firebase error code
-      // returned (or a network-level rejection in CI with placeholder keys).
+      // message text because the wording depends on the Firebase error code.
       await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 15_000 });
     },
   );

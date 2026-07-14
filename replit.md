@@ -153,6 +153,28 @@ the app works without extra Firebase Console setup.
 `VITE_FIREBASE_APPCHECK_SITE_KEY`** — the server would then reject every API
 request because the client would not attach any token.
 
+## CI / GitHub Secrets
+
+The CI pipeline (`.github/workflows/ci.yml`) runs two parallel jobs on every push and PR:
+
+- **`unit`** — `tsc --noEmit`, `eslint`, `npm test`, `npm run test:coverage`, `npm run build`. Passes with placeholder Firebase values; no secrets needed.
+- **`e2e`** — Playwright Chromium. Journeys 1–3 use Demo Mode (no real Firebase); they pass with placeholders. **Journey 4** (Admin login rejection) makes a real Firebase Auth call and **self-skips with a visible reason** when only placeholder credentials are present.
+
+### To unlock Journey 4 in GitHub Actions
+Add the following as **GitHub repo secrets** (Settings → Secrets and variables → Actions → New repository secret):
+
+| Secret name | Value |
+|---|---|
+| `VITE_FIREBASE_API_KEY` | Firebase Web API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | e.g. `your-project.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `VITE_FIREBASE_STORAGE_BUCKET` | e.g. `your-project.firebasestorage.app` |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Numeric sender ID |
+| `VITE_FIREBASE_APP_ID` | e.g. `1:000000000000:web:abc123` |
+| `VITE_FIREBASE_MEASUREMENT_ID` | GA measurement ID |
+
+When these secrets are present the `ci.yml` env block picks them up automatically (via `${{ secrets.NAME || 'ci-placeholder-...' }}`) and Journey 4 runs on every push without any workflow changes needed.
+
 ## User preferences
 - Preserve the existing dark neon "stadium command center" UI — do not redesign.
 
