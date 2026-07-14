@@ -188,6 +188,257 @@ test.describe('Admin (Organizer) journey', () => {
   );
 });
 
+// ─── Journey 5: Fan — empty cart prevents submission ─────────────────────────
+//
+// The "Place Catering Order" button carries `disabled={cartSubtotal === 0}`.
+// Journey 1 always adds an item before touching the button, so the zero-cart
+// disabled state has never been exercised end-to-end.
+
+test.describe('Fan journey — empty cart', () => {
+  test(
+    'food order button is disabled when the cart is empty (0 items)',
+    async ({ page }) => {
+      await goToLanding(page);
+      await enterDemoMode(page, 'Fan Portal');
+
+      // ── Step 1: Navigate to the Food Ordering tab ──────────────────────────
+      await page.getByRole('button', { name: /food ordering/i }).click();
+      await expect(page.getByText('In-Seat Catering')).toBeVisible({ timeout: 5_000 });
+
+      // ── Step 2: No items added — cart total is $0.00 ──────────────────────
+      // Confirm the empty-cart message is visible.
+      await expect(
+        page.getByText('Your catering tray is empty. Add food items to begin.'),
+      ).toBeVisible();
+
+      // ── Step 3: Submit button must be disabled — no order should be placeable
+      const orderBtn = page.getByRole('button', { name: /place catering order/i });
+      await expect(orderBtn).toBeDisabled();
+    },
+  );
+});
+
+// ─── Journey 6: Fan — emergency alert active status ───────────────────────────
+//
+// Journey 1 only exercises the Food Ordering tab.  The Medical tab's
+// role="alert" confirmation banner has not been covered end-to-end.
+
+test.describe('Fan journey — emergency alert', () => {
+  test(
+    'submitting the emergency beacon shows the paramedic-dispatch confirmation',
+    async ({ page }) => {
+      await goToLanding(page);
+      await enterDemoMode(page, 'Fan Portal');
+
+      // ── Step 1: Navigate to the Medical Help tab ───────────────────────────
+      await page.getByRole('button', { name: /medical help/i }).click();
+      await expect(page.getByText('In-Stadium Emergency')).toBeVisible({ timeout: 5_000 });
+
+      // ── Step 2: The seat input is pre-filled (default 'A12-24') ───────────
+      await expect(page.locator('#emergency-seat')).toHaveValue('A12-24');
+
+      // ── Step 3: Submit the emergency form ─────────────────────────────────
+      await page.getByRole('button', { name: /trigger emergency aid/i }).click();
+
+      // ── Step 4: The role="alert" confirmation banner must appear ──────────
+      // Rendered only when emergencySuccess is true; aria-live="assertive"
+      // ensures screen-readers announce it immediately.
+      await expect(page.locator('[role="alert"]')).toContainText(
+        'EMERGENCY RESOLUTION ACTIVE',
+        { timeout: 5_000 },
+      );
+      await expect(page.locator('[role="alert"]')).toContainText(
+        'Paramedic team is dispatching',
+      );
+    },
+  );
+});
+
+// ─── Journey 7: Volunteer — empty task list ───────────────────────────────────
+//
+// Journey 2 starts with tasks already seeded.  This journey verifies the
+// dashboard renders both empty-state messages when there are genuinely no
+// tasks at all — not a blank or broken screen.
+//
+// Implementation note: `initDemoStore()` (called inside `enterDemoMode`) reads
+// from sessionStorage on first hydration.  By setting the store key before
+// clicking the role button we can inject a task-free snapshot without touching
+// any source code.
+
+test.describe('Volunteer journey — empty task list', () => {
+  test(
+    'volunteer dashboard renders empty-state UI when no tasks are assigned or pending',
+    async ({ page }) => {
+      await goToLanding(page);
+
+      // ── Pre-seed sessionStorage with a task-free snapshot ─────────────────
+      // initDemoStore (called by enterDemoMode) calls hydrateFromStorage first,
+      // so this data will be active when the volunteer dashboard subscribes.
+      await page.evaluate(() => {
+        const emptySnapshot = {
+          volunteers: [
+            {
+              id: 'demo-vol-1',
+              uid: 'demo-vol-1',
+              fullName: 'Marco Silva',
+              email: 'marco.silva@demo.nexusai.com',
+              role: 'volunteer',
+              assignedGate: 'Gate A',
+              active: true,
+            },
+          ],
+          fans: [
+            {
+              id: 'demo-fan-1',
+              uid: 'demo-fan-1',
+              fullName: 'Jordan Alvarez',
+              email: 'jordan.alvarez@demo.nexusai.com',
+              role: 'fan',
+              seatNumber: 'A-118',
+              assignedGate: 'Gate A',
+            },
+          ],
+          tasks: [],             // ← intentionally empty
+          foodOrders: [],
+          emergencyRequests: [],
+          issueReports: [],
+          matches: [
+            {
+              id: 'demo-match-1',
+              stadiumName: 'Estádio do Nexus',
+              matchName: 'Portugal vs Argentina',
+              matchDate: '18/07/2026',
+              matchTime: '19:30',
+              ticketPrice: 120,
+              published: true,
+            },
+          ],
+          systemConfig: [{ id: 'demo-config-1', isPublished: true }],
+        };
+        window.sessionStorage.setItem(
+          'nexus-demo-store-v1',
+          JSON.stringify(emptySnapshot),
+        );
+      });
+
+      await enterDemoMode(page, 'Volunteer Dashboard');
+
+      // ── "My Active Task" empty state ──────────────────────────────────────
+      await expect(
+        page.getByText('You do not have any active assignments.'),
+      ).toBeVisible({ timeout: 10_000 });
+
+      // ── "Live Task Stack" empty state ──────────────────────────────────────
+      await expect(
+        page.getByText('Stadium operations are fully optimized.'),
+      ).toBeVisible({ timeout: 5_000 });
+    },
+  );
+});
+
+// ─── Journey 8: Admin — invalid email format blocked by HTML5 validation ─────
+//
+// VolunteersPanel uses `type="email"` on the email input.  The browser's native
+// form validation fires synchronously on submit and prevents the `onAddVolunteer`
+// handler from running when the value is not a valid e-mail address.
+// This scenario is fully uncovered by Journey 3 (which only reads the panel,
+// never submits the form).
+
+test.describe('Admin (Organizer) journey — volunteer form validation', () => {
+  test(
+    'add-volunteer form blocks submission and reports invalid state for a malformed email',
+    async ({ page }) => {
+      await goToLanding(page);
+      await enterDemoMode(page, 'Organizer Dashboard');
+
+      // ── Step 1: Navigate to the Volunteers panel ──────────────────────────
+      await page
+        .getByRole('navigation', { name: /admin navigation/i })
+        .getByRole('button', { name: /volunteers/i })
+        .click();
+      await expect(page.getByText('Volunteer Coordination')).toBeVisible({ timeout: 5_000 });
+
+      // ── Step 2: Record how many volunteers are in the table right now ──────
+      // Demo seed contains 3 volunteers.
+      const initialCount = await page.locator('table tbody tr').count();
+      expect(initialCount).toBeGreaterThan(0); // sanity-check the table rendered
+
+      // ── Step 3: Fill in a name and a clearly invalid email ─────────────────
+      await page.locator('#vol-new-name').fill('Test Volunteer');
+      await page.locator('#vol-new-email').fill('not-a-valid-email'); // no @-domain
+
+      // ── Step 4: Tick the password-acknowledgement checkbox (required to
+      //    un-disable the submit button) ──────────────────────────────────────
+      await page.locator('#vol-password-ack').check();
+
+      // ── Step 5: Attempt to submit ─────────────────────────────────────────
+      await page.getByRole('button', { name: /register volunteer/i }).click();
+
+      // ── Step 6: Native HTML5 validation must report the email as invalid ───
+      // checkValidity() returns false when the input fails its type constraint.
+      const emailValid = await page
+        .locator('#vol-new-email')
+        .evaluate((el) => (el as HTMLInputElement).checkValidity());
+      expect(emailValid).toBe(false);
+
+      // ── Step 7: No volunteer was added — table count is unchanged ──────────
+      await expect(page.locator('table tbody tr')).toHaveCount(initialCount);
+    },
+  );
+});
+
+// ─── Journey 9: Keyboard-only navigation ─────────────────────────────────────
+//
+// Proves that the keyboard-accessibility work is end-to-end functional: a user
+// can complete the Fan food-ordering flow without touching the mouse.
+// Each interactive element is reached via .focus() (equivalent to Tab-navigation
+// to that element) and activated with Enter or Space only.
+
+test.describe('Keyboard-only navigation', () => {
+  test(
+    'fan can enter Demo Mode and place a food order using only keyboard (focus + Enter/Space)',
+    async ({ page }) => {
+      await goToLanding(page);
+
+      // ── Step 1: Focus "Try Demo Mode" and activate with Enter ─────────────
+      await page.getByRole('button', { name: /try demo mode/i }).focus();
+      await page.keyboard.press('Enter');
+
+      // ── Step 2: Focus "Fan Portal" inside the dialog, activate with Enter ─
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible({ timeout: 5_000 });
+      await dialog.getByRole('button', { name: 'Fan Portal' }).focus();
+      await page.keyboard.press('Enter');
+      await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+      // Fan dashboard is ready
+      await expect(page.getByText('SEAT: A-118')).toBeVisible({ timeout: 10_000 });
+
+      // ── Step 3: Focus "Food Ordering" sidebar tab and activate with Enter ──
+      await page.getByRole('button', { name: /food ordering/i }).focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByText('In-Seat Catering')).toBeVisible({ timeout: 5_000 });
+
+      // ── Step 4: Focus "Add one Veg Burger" and activate with Space ─────────
+      await page.getByRole('button', { name: /add one veg burger/i }).focus();
+      await page.keyboard.press('Space');
+      await expect(page.getByLabel('1 Veg Burger in cart')).toBeVisible();
+
+      // ── Step 5: Focus "Place Catering Order" and activate with Enter ───────
+      // Button is now enabled (cart is non-empty).
+      const orderBtn = page.getByRole('button', { name: /place catering order/i });
+      await expect(orderBtn).not.toBeDisabled();
+      await orderBtn.focus();
+      await page.keyboard.press('Enter');
+
+      // ── Step 6: Confirm the success banner ────────────────────────────────
+      await expect(
+        page.getByText('Order Placed! Delivery is en-route.'),
+      ).toBeVisible({ timeout: 5_000 });
+    },
+  );
+});
+
 // ─── Journey 4: Admin login rejection ────────────────────────────────────────
 //
 // This test makes a real Firebase Auth network call.  When only placeholder
