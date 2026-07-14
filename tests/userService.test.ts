@@ -294,6 +294,23 @@ describe('getUserProfile', () => {
     expect(mockSetDoc).toHaveBeenCalled();
   });
 
+  it('falls back to an email-field query (Strategy 3) when no direct key doc exists and migrates it', async () => {
+    // No doc at fans/uid-email-query or fans/test@test.com (nothing seeded), so
+    // Strategies 1 & 2 (direct getDoc lookups) both miss.
+    // Strategy 3: getDocs by 'email' field returns a document.
+    mockGetDocs.mockImplementationOnce(() =>
+      Promise.resolve({
+        empty: false,
+        docs: [{ id: 'email-query-doc', data: () => ({ fullName: 'Query Fan', email: 'test@test.com' }) }],
+      })
+    );
+    const profile = await getUserProfile('uid-email-query', 'fan');
+    expect(profile).not.toBeNull();
+    expect(profile?.fullName).toBe('Query Fan');
+    // Best-effort migration: should have attempted to write the UID-keyed doc.
+    expect(mockSetDoc).toHaveBeenCalled();
+  });
+
   it('falls back to querying by uid field when neither UID nor email key match', async () => {
     mockGetDocs.mockImplementationOnce(() => Promise.resolve({ empty: true, docs: [] })); // email query
     mockGetDocs.mockImplementationOnce(() =>

@@ -30,7 +30,7 @@ export default function OrganizerLogin({
 
       {/* Stadium backdrop */}
       <div className="gpu-blur-layer absolute inset-0">
-        <img src={stadiumBg} alt="stadium" className="w-full h-full object-cover opacity-15 saturate-50 filter blur-[1px]" />
+        <img src={stadiumBg} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-15 saturate-50 filter blur-[1px]" />
         <div className="absolute inset-0 bg-slate-950/80" />
       </div>
 

@@ -41,7 +41,7 @@ export default function FanAuth({
   return (
     <div id="fan-auth-container" className="relative min-h-screen bg-slate-950 flex items-center justify-center p-6 overflow-hidden">
       <div className="gpu-blur-layer absolute inset-0">
-        <img src={stadiumBg} alt="stadium bg" className="w-full h-full object-cover opacity-15 filter saturate-50 blur-[2px]" />
+        <img src={stadiumBg} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-15 filter saturate-50 blur-[2px]" />
         <div className="absolute inset-0 bg-slate-950/80" />
       </div>
 

@@ -130,9 +130,13 @@ describe('LandingPage', () => {
     expect(screen.getByText('03. ENGAGE')).toBeInTheDocument();
   });
 
-  it('renders the stadium background image with alt text', () => {
-    render(<LandingPage {...defaultProps} />);
-    expect(screen.getByAltText('FIFA Stadium 2026')).toBeInTheDocument();
+  it('renders the stadium background image as decorative (aria-hidden, empty alt)', () => {
+    const { container } = render(<LandingPage {...defaultProps} />);
+    // Background image is purely decorative (opacity-15 blurred backdrop) —
+    // it must have alt="" and aria-hidden="true" so screen readers skip it.
+    const bgImg = container.querySelector('img[aria-hidden="true"]');
+    expect(bgImg).toBeInTheDocument();
+    expect(bgImg).toHaveAttribute('alt', '');
   });
 
   it('renders the footer', () => {

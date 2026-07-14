@@ -31,7 +31,8 @@ export default function LandingPage({ onSelectRole, onEnterDemo, stadiumBg, rona
       <div className="gpu-blur-layer absolute inset-0">
         <img 
           src={stadiumBg} 
-          alt="FIFA Stadium 2026" 
+          alt=""
+          aria-hidden="true"
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover opacity-15 scale-105 filter saturate-50 blur-[1px]" 
         />
