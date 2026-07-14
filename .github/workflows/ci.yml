@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+env:
+  # Public Firebase client identifiers — safe to embed in CI.
+  # Demo Mode (used by E2E tests) does not make real Firebase calls,
+  # so placeholder values keep the unit + build steps working without
+  # exposing production credentials.
+  VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'ci-placeholder-api-key' }}
+  VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'ci-placeholder.firebaseapp.com' }}
+  VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || 'ci-placeholder-project' }}
+  VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || 'ci-placeholder.firebasestorage.app' }}
+  VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || '000000000000' }}
+  VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || '1:000000000000:web:ci0000000000' }}
+  VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || 'G-CIPLACEHOLDER' }}
+  SESSION_SECRET: ${{ secrets.SESSION_SECRET || 'ci-session-secret-32-chars-min!!' }}
+  DISABLE_HMR: "true"
+
+jobs:
+  # ─── Unit tests, type-check, lint, build ──────────────────────────────────
+  unit:
+    name: Unit tests, lint & build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Lint (eslint)
+        run: npx eslint .
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Coverage
+        run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
+
+  # ─── End-to-end tests (Playwright, Chromium) ──────────────────────────────
+  e2e:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    # E2E can run in parallel with unit tests — they share no state.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e

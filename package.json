@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "verify:admin": "tsx scripts/verifyAdminIntegrity.ts",
-    "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/firestoreRules.test.ts\""
+    "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/firestoreRules.test.ts\"",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@google/genai": "^2.11.0",
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
