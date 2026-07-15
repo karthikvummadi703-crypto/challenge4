@@ -49,9 +49,6 @@ export default defineConfig(() => {
               'firebase/firestore',
             ],
 
-            // Gemini / Google AI client
-            'vendor-ai': ['@google/genai'],
-
             // UI icon library
             'vendor-icons': ['lucide-react'],
           },
