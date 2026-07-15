@@ -42,7 +42,7 @@ Starts the Express + Vite dev server on **port 5000**. Open `http://localhost:50
 | `npm run lint` | `tsc --noEmit` + `eslint .` |
 | `npm test` | 715 Vitest unit tests across 45 files |
 | `npm run test:coverage` | Same, with V8 coverage report |
-| `npm run test:e2e` | 4 Playwright E2E journey tests (Chromium) |
+| `npm run test:e2e` | 9 Playwright E2E journey tests (Chromium) |
 | `npm run test:rules` | Firestore security rules tests against a local emulator |
 | `npm run verify:admin` | Live Firestore check: exactly one admin document must exist |
 
@@ -137,7 +137,7 @@ Firebase
 | Layer | Count | Runner |
 |---|---|---|
 | Unit + integration | **715 tests, 45 files** | Vitest |
-| E2E user journeys | **4 tests** (Fan, Volunteer, Admin Demo, Admin login rejection) | Playwright / Chromium |
+| E2E user journeys | **9 tests** (Fan food order, Volunteer task complete, Admin Demo, Admin login rejection; + Fan empty cart, Fan emergency alert, Volunteer empty tasks, Admin email validation, keyboard-only navigation) | Playwright / Chromium |
 | Firestore rules | Security rules against live emulator | `npm run test:rules` |
 
 Coverage (V8, `npm run test:coverage`, enforced in CI):
@@ -264,7 +264,7 @@ App Check verifies that API requests originate from the real app. Code is fully 
 │   ├── components/                # 31 component test files (jsdom, React Testing Library)
 │   ├── services/                  # dataSource service tests
 │   ├── e2e/
-│   │   └── journeys.spec.ts       # 4 Playwright user journey tests
+│   │   └── journeys.spec.ts       # 9 Playwright user journey tests
 │   ├── server.test.ts             # Express route + middleware tests
 │   ├── demoStore.test.ts          # demoStore unit tests
 │   └── firestoreRules.test.ts     # Firestore rules tests (requires local emulator)

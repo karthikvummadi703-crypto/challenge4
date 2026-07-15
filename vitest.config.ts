@@ -24,7 +24,7 @@ export default defineConfig({
       // src/services (apiClient/authService/userService/dataSource) that are
       // thin Firebase SDK wrappers better suited to integration/e2e testing.
       thresholds: {
-        'server.ts': { statements: 65, branches: 70, functions: 50, lines: 65 },
+        'server.ts': { statements: 72, branches: 79, functions: 76, lines: 71 },
       },
     },
   },
