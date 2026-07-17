@@ -3,6 +3,12 @@
 **Nexus AI** is a full-stack, real-time stadium operations platform built for the FIFA World Cup 2026. It gives three distinct roles — **Admin** (Organizer), **Volunteer**, and **Fan** — purpose-built dashboards that handle everything from crowd telemetry and volunteer dispatch to fan food ordering and emergency escalation. A three-tier AI pipeline (n8n webhook → Gemini generative AI → local rule engine) powers an always-available command assistant that degrades gracefully when any upstream service is absent. The platform ships with a **Demo Mode** that runs entirely in-browser with no Firebase setup required, making it instantly evaluable by any judge or reviewer.
 
 ---
+To make the web application for real world application the admin login are setes to single credentials in firestore database and this will also enhance the security of the website 
+The fixed  admin login credentials are 
+email: karthikvummadi703@gmail.com 
+password: karthik@cse 
+Hope the respected evaluators understand my
+y thought 
 
 ## Try It in 30 Seconds — Demo Mode
 
